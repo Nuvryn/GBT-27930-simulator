@@ -32,8 +32,8 @@ struct sim_engine_s
     sim_stage_t stage;
     uint32_t now_ms, stage_start_ms, stop_start_ms, own_ready_ms, pause_start_ms;
     uint32_t confirm_start_ms, parameter_start_ms;
-    uint32_t sent_ms[GB27930_MESSAGE_COUNT], received_ms[GB27930_MESSAGE_COUNT];
-    bool has_sent[GB27930_MESSAGE_COUNT], has_received[GB27930_MESSAGE_COUNT];
+    uint32_t sent_ms[GBT27930_MESSAGE_COUNT], received_ms[GBT27930_MESSAGE_COUNT];
+    bool has_sent[GBT27930_MESSAGE_COUNT], has_received[GBT27930_MESSAGE_COUNT];
     bool event_fired[SIM_CONFIG_EVENT_CAPACITY];
     bool recognized, peer_ready, own_ready, failed, paused, blocked, reset_pending, unplugged;
     bool selftest_logged, precharge_logged, completed_stats;
@@ -42,7 +42,7 @@ struct sim_engine_s
     int io_error;
 };
 static int sim_engine_dispatch(void *user, bool receive, const char *message, uint32_t id, const uint8_t *data, size_t len);
-static void sim_engine_deliver(sim_engine_t *engine, gb27930_message_t message, const uint8_t *data, size_t len);
+static void sim_engine_deliver(sim_engine_t *engine, gbt27930_message_t message, const uint8_t *data, size_t len);
 
 /** State changes restart periodic schedules, never physical hardware. */
 static void sim_engine_stage(sim_engine_t *engine, sim_stage_t stage, const char *reason)
@@ -99,7 +99,7 @@ static void sim_engine_restart(sim_engine_t *engine, sim_stage_t stage)
     sim_engine_stage(engine, stage, "restart");
 }
 /** Distinguish timeout message bits from transport/parameter errors in evidence. */
-static void sim_engine_failure(sim_engine_t *engine, const char *reason, gb27930_message_t message)
+static void sim_engine_failure(sim_engine_t *engine, const char *reason, gbt27930_message_t message)
 {
     if (engine->stage == SIM_STAGE_DONE || engine->stage == SIM_STAGE_RECOVERY)
     {
@@ -107,22 +107,22 @@ static void sim_engine_failure(sim_engine_t *engine, const char *reason, gb27930
     }
     engine->failed = true;
     engine->reset_pending = true;
-    sim_log_event("ERROR", "reason=%s message=%s", reason, gb27930_descriptor(message) != NULL ? gb27930_descriptor(message)->name : "transport");
-    const char *keys_charger[GB27930_MESSAGE_COUNT] = {[GB27930_BRM] = "cem_brm", [GB27930_BCP] = "cem_bcp", [GB27930_BRO] = "cem_bro", [GB27930_BCS] = "cem_bcs", [GB27930_BCL] = "cem_bcl", [GB27930_BST] = "cem_bst", [GB27930_BSD] = "cem_bsd", [GB27930_BSM] = "cem_bsm"};
-    const char *keys_bms[GB27930_MESSAGE_COUNT] = {[GB27930_CRM] = "bem_crm_initial", [GB27930_CML] = "bem_cml", [GB27930_CRO] = "bem_cro", [GB27930_CCS] = "bem_ccs", [GB27930_CST] = "bem_cst", [GB27930_CSD] = "bem_csd"};
-    if ((unsigned) message < GB27930_MESSAGE_COUNT)
+    sim_log_event("ERROR", "reason=%s message=%s", reason, gbt27930_descriptor(message) != NULL ? gbt27930_descriptor(message)->name : "transport");
+    const char *keys_charger[GBT27930_MESSAGE_COUNT] = {[GBT27930_BRM] = "cem_brm", [GBT27930_BCP] = "cem_bcp", [GBT27930_BRO] = "cem_bro", [GBT27930_BCS] = "cem_bcs", [GBT27930_BCL] = "cem_bcl", [GBT27930_BST] = "cem_bst", [GBT27930_BSD] = "cem_bsd", [GBT27930_BSM] = "cem_bsm"};
+    const char *keys_bms[GBT27930_MESSAGE_COUNT] = {[GBT27930_CRM] = "bem_crm_initial", [GBT27930_CML] = "bem_cml", [GBT27930_CRO] = "bem_cro", [GBT27930_CCS] = "bem_ccs", [GBT27930_CST] = "bem_cst", [GBT27930_CSD] = "bem_csd"};
+    if ((unsigned) message < GBT27930_MESSAGE_COUNT)
     {
         const char *key = engine->config.charger ? keys_charger[message] : keys_bms[message];
-        if (message == GB27930_CRM && engine->stage == SIM_STAGE_IDENTIFY && !engine->config.charger)
+        if (message == GBT27930_CRM && engine->stage == SIM_STAGE_IDENTIFY && !engine->config.charger)
         {
             key = "bem_crm_confirm";
         }
         if (key != NULL)
         {
-            (void) gb27930_set(&engine->config.values, key, 1);
+            (void) gbt27930_set(&engine->config.values, key, 1);
         }
     }
-    if (engine->config.version == 2023u && message == GB27930_BSM)
+    if (engine->config.version == 2023u && message == GBT27930_BSM)
     {
         engine->blocked = true;
         sim_log_event("LOCKOUT", "BSM 超时，等待模拟重新插拔枪事件");
@@ -137,7 +137,7 @@ static void sim_engine_tp_event(void *user, bool transmit, uint32_t pgn, int res
     sim_log_event("TP", "direction=%s pgn=%06X result=%d", transmit ? "tx" : "rx", (unsigned) pgn, result);
     if (result != 0)
     {
-        sim_engine_failure(engine, "tp_error", gb27930_find_pgn(pgn));
+        sim_engine_failure(engine, "tp_error", gbt27930_find_pgn(pgn));
     }
 }
 static int sim_engine_inject(sim_engine_t *engine, bool receive, const char *message, uint32_t id, const uint8_t *data, size_t len)
@@ -153,10 +153,10 @@ static int sim_engine_tp_send(void *user, const sim_frame_t *frame)
 static void sim_engine_tp_receive(void *user, uint32_t pgn, const uint8_t *data, size_t len)
 {
     sim_engine_t *engine = user;
-    gb27930_message_t message = gb27930_find_pgn(pgn);
-    if (message != GB27930_MESSAGE_COUNT)
+    gbt27930_message_t message = gbt27930_find_pgn(pgn);
+    if (message != GBT27930_MESSAGE_COUNT)
     {
-        int rc = sim_engine_inject(engine, true, gb27930_descriptor(message)->name, gb27930_can_id(message, engine->config.peer, engine->config.source), data, len);
+        int rc = sim_engine_inject(engine, true, gbt27930_descriptor(message)->name, gbt27930_can_id(message, engine->config.peer, engine->config.source), data, len);
         if (rc != 0)
         {
             engine->io_error = rc;
@@ -189,8 +189,8 @@ static int sim_engine_dispatch(void *user, bool receive, const char *message, ui
             }
             return 0;
         }
-        gb27930_message_t received = gb27930_find_pgn((id >> 8u) & 0x3FF00u);
-        if (received != GB27930_MESSAGE_COUNT)
+        gbt27930_message_t received = gbt27930_find_pgn((id >> 8u) & 0x3FF00u);
+        if (received != GBT27930_MESSAGE_COUNT)
         {
             sim_engine_deliver(engine, received, data, len);
         }
@@ -258,26 +258,26 @@ void sim_engine_stop(sim_engine_t *engine, uint32_t now_ms)
     }
 }
 /** Validate parameters before transitioning or refreshing any timeout. */
-static void sim_engine_payload(sim_engine_t *engine, gb27930_message_t message, const gb27930_values_t *values)
+static void sim_engine_payload(sim_engine_t *engine, gbt27930_message_t message, const gbt27930_values_t *values)
 {
-    if (message == GB27930_BST || message == GB27930_CST)
+    if (message == GBT27930_BST || message == GBT27930_CST)
     {
         const char *key = engine->config.charger ? "cst_reason" : "bst_reason";
-        (void) gb27930_set(&engine->config.values, key, 64);
+        (void) gbt27930_set(&engine->config.values, key, 64);
         if (engine->stage < SIM_STAGE_STOPPING)
         {
             sim_engine_stage(engine, SIM_STAGE_STOPPING, "peer_stop");
         }
         return;
     }
-    if (message == GB27930_BEM || message == GB27930_CEM)
+    if (message == GBT27930_BEM || message == GBT27930_CEM)
     {
         sim_engine_failure(engine, "peer_error", message);
         return;
     }
     if (engine->stage == SIM_STAGE_HANDSHAKE)
     {
-        if (engine->config.charger && message == GB27930_BHM)
+        if (engine->config.charger && message == GBT27930_BHM)
         {
             sim_log_event("ACTION", "模拟绝缘自检 result=%s", engine->config.self_test_pass ? "pass" : "fail");
             if (engine->config.self_test_pass)
@@ -289,41 +289,41 @@ static void sim_engine_payload(sim_engine_t *engine, gb27930_message_t message, 
                 sim_engine_failure(engine, "self_test_failed", message);
             }
         }
-        if (!engine->config.charger && message == GB27930_CRM && gb27930_get(values, "crm_result") == 0)
+        if (!engine->config.charger && message == GBT27930_CRM && gbt27930_get(values, "crm_result") == 0)
         {
             sim_engine_stage(engine, SIM_STAGE_IDENTIFY, "crm_initial");
         }
     }
     if (engine->stage == SIM_STAGE_RECOVERY && engine->config.reconnect_allowed && !engine->blocked && engine->attempts < engine->config.retries)
     {
-        if (!engine->config.charger && message == GB27930_CRM && gb27930_get(values, "crm_result") == 0)
+        if (!engine->config.charger && message == GBT27930_CRM && gbt27930_get(values, "crm_result") == 0)
         {
             sim_engine_restart(engine, SIM_STAGE_IDENTIFY);
         }
-        else if (engine->config.charger && message == GB27930_BRM)
+        else if (engine->config.charger && message == GBT27930_BRM)
         {
             sim_engine_restart(engine, SIM_STAGE_IDENTIFY);
         }
     }
     if (engine->stage == SIM_STAGE_IDENTIFY)
     {
-        if (engine->config.charger && message == GB27930_BRM)
+        if (engine->config.charger && message == GBT27930_BRM)
         {
             if (!engine->recognized)
             {
                 engine->confirm_start_ms = engine->now_ms;
             }
             engine->recognized = true;
-            engine->has_sent[GB27930_CRM] = false;
+            engine->has_sent[GBT27930_CRM] = false;
         }
-        if (!engine->config.charger && message == GB27930_CRM && gb27930_get(values, "crm_result") == 170)
+        if (!engine->config.charger && message == GBT27930_CRM && gbt27930_get(values, "crm_result") == 170)
         {
             sim_engine_stage(engine, SIM_STAGE_CONFIG, "identified");
         }
-        if (engine->config.charger && message == GB27930_BCP && engine->recognized)
+        if (engine->config.charger && message == GBT27930_BCP && engine->recognized)
         {
-            if (!engine->config.parameters_match || gb27930_get(values, "bcp_voltage_mv") < gb27930_get(&engine->config.values, "cml_min_voltage_mv") ||
-                gb27930_get(values, "bcp_voltage_mv") > gb27930_get(&engine->config.values, "cml_max_voltage_mv"))
+            if (!engine->config.parameters_match || gbt27930_get(values, "bcp_voltage_mv") < gbt27930_get(&engine->config.values, "cml_min_voltage_mv") ||
+                gbt27930_get(values, "bcp_voltage_mv") > gbt27930_get(&engine->config.values, "cml_max_voltage_mv"))
             {
                 sim_engine_failure(engine, "battery_parameters_mismatch", message);
             }
@@ -335,11 +335,11 @@ static void sim_engine_payload(sim_engine_t *engine, gb27930_message_t message, 
     }
     if (engine->stage == SIM_STAGE_CONFIG)
     {
-        if (!engine->config.charger && message == GB27930_CML)
+        if (!engine->config.charger && message == GBT27930_CML)
         {
-            int64_t voltage = gb27930_get(&engine->config.values, "bcp_voltage_mv");
-            if (engine->config.parameters_match && voltage >= gb27930_get(values, "cml_min_voltage_mv") && voltage <= gb27930_get(values, "cml_max_voltage_mv") &&
-                gb27930_get(values, "cml_min_voltage_mv") <= gb27930_get(values, "cml_max_voltage_mv") && gb27930_get(values, "cml_min_current_ma") <= gb27930_get(values, "cml_max_current_ma"))
+            int64_t voltage = gbt27930_get(&engine->config.values, "bcp_voltage_mv");
+            if (engine->config.parameters_match && voltage >= gbt27930_get(values, "cml_min_voltage_mv") && voltage <= gbt27930_get(values, "cml_max_voltage_mv") &&
+                gbt27930_get(values, "cml_min_voltage_mv") <= gbt27930_get(values, "cml_max_voltage_mv") && gbt27930_get(values, "cml_min_current_ma") <= gbt27930_get(values, "cml_max_current_ma"))
             {
                 sim_engine_stage(engine, SIM_STAGE_READY, "charger_parameters_accepted");
             }
@@ -348,39 +348,39 @@ static void sim_engine_payload(sim_engine_t *engine, gb27930_message_t message, 
                 sim_engine_failure(engine, "charger_parameters_mismatch", message);
             }
         }
-        if (engine->config.charger && message == GB27930_BRO)
+        if (engine->config.charger && message == GBT27930_BRO)
         {
             sim_engine_stage(engine, SIM_STAGE_READY, "bro_received");
         }
     }
     if (engine->stage == SIM_STAGE_READY)
     {
-        if (engine->config.charger && message == GB27930_BRO && gb27930_get(values, "bro_ready") == 170)
+        if (engine->config.charger && message == GBT27930_BRO && gbt27930_get(values, "bro_ready") == 170)
         {
             engine->peer_ready = true;
         }
-        if (!engine->config.charger && message == GB27930_CRO && gb27930_get(values, "cro_ready") == 170)
+        if (!engine->config.charger && message == GBT27930_CRO && gbt27930_get(values, "cro_ready") == 170)
         {
             engine->peer_ready = true;
             sim_engine_stage(engine, SIM_STAGE_CHARGING, "both_ready");
         }
-        if (engine->config.charger && (message == GB27930_BCL || message == GB27930_BCS) && engine->own_ready && engine->has_received[GB27930_BCL] && engine->has_received[GB27930_BCS])
+        if (engine->config.charger && (message == GBT27930_BCL || message == GBT27930_BCS) && engine->own_ready && engine->has_received[GBT27930_BCL] && engine->has_received[GBT27930_BCS])
         {
             sim_engine_stage(engine, SIM_STAGE_CHARGING, "bcl_bcs_received");
         }
     }
     if (engine->stage == SIM_STAGE_CHARGING)
     {
-        if (engine->config.charger && message == GB27930_BCL)
+        if (engine->config.charger && message == GBT27930_BCL)
         {
-            int64_t voltage = gb27930_get(values, "bcl_voltage_mv"), current = gb27930_get(values, "bcl_current_ma");
-            if (engine->config.version == 2023u && voltage < gb27930_get(&engine->config.values, "cml_min_voltage_mv"))
+            int64_t voltage = gbt27930_get(values, "bcl_voltage_mv"), current = gbt27930_get(values, "bcl_current_ma");
+            if (engine->config.version == 2023u && voltage < gbt27930_get(&engine->config.values, "cml_min_voltage_mv"))
             {
                 sim_engine_stop(engine, engine->now_ms);
                 return;
             }
-            int64_t max_voltage = gb27930_get(&engine->config.values, "cml_max_voltage_mv"), max_current = gb27930_get(&engine->config.values, "cml_max_current_ma");
-            int64_t min_current = gb27930_get(&engine->config.values, "cml_min_current_ma");
+            int64_t max_voltage = gbt27930_get(&engine->config.values, "cml_max_voltage_mv"), max_current = gbt27930_get(&engine->config.values, "cml_max_current_ma");
+            int64_t min_current = gbt27930_get(&engine->config.values, "cml_min_current_ma");
             if (voltage > max_voltage)
             {
                 voltage = max_voltage;
@@ -393,35 +393,35 @@ static void sim_engine_payload(sim_engine_t *engine, gb27930_message_t message, 
             {
                 current = min_current;
             }
-            (void) gb27930_set(&engine->config.values, "ccs_voltage_mv", voltage);
-            (void) gb27930_set(&engine->config.values, "ccs_current_ma", engine->paused ? 0 : current);
+            (void) gbt27930_set(&engine->config.values, "ccs_voltage_mv", voltage);
+            (void) gbt27930_set(&engine->config.values, "ccs_current_ma", engine->paused ? 0 : current);
         }
-        if (engine->config.charger && message == GB27930_BSM)
+        if (engine->config.charger && message == GBT27930_BSM)
         {
             const char *fault_keys[] = {"bsm_cell_voltage_state", "bsm_soc_state", "bsm_current_state", "bsm_temperature_state", "bsm_insulation_state", "bsm_connector_state"};
             for (size_t idx = 0u; idx < 6u; idx++)
             {
-                if (gb27930_get(values, fault_keys[idx]) != 0)
+                if (gbt27930_get(values, fault_keys[idx]) != 0)
                 {
                     sim_engine_stop(engine, engine->now_ms);
                     return;
                 }
             }
-            bool paused = gb27930_get(values, "bsm_allow") == 0;
+            bool paused = gbt27930_get(values, "bsm_allow") == 0;
             if (paused != engine->paused)
             {
                 engine->paused = paused;
                 engine->pause_start_ms = engine->now_ms;
                 sim_log_event("ACTION", "模拟充电%s", paused ? "暂停" : "恢复");
             }
-            (void) gb27930_set(&engine->config.values, "ccs_allow", paused ? 0 : 1);
+            (void) gbt27930_set(&engine->config.values, "ccs_allow", paused ? 0 : 1);
         }
     }
 }
 /** Reject out-of-stage traffic before it can refresh an application's receive timer. */
-static bool sim_engine_expected(const sim_engine_t *engine, gb27930_message_t message)
+static bool sim_engine_expected(const sim_engine_t *engine, gbt27930_message_t message)
 {
-    if (message == GB27930_BST || message == GB27930_CST || message == GB27930_BEM || message == GB27930_CEM)
+    if (message == GBT27930_BST || message == GBT27930_CST || message == GBT27930_BEM || message == GBT27930_CEM)
     {
         return true;
     }
@@ -429,27 +429,27 @@ static bool sim_engine_expected(const sim_engine_t *engine, gb27930_message_t me
     switch (engine->stage)
     {
         case SIM_STAGE_HANDSHAKE:
-            return charger ? message == GB27930_BHM : message == GB27930_CHM || message == GB27930_CRM;
+            return charger ? message == GBT27930_BHM : message == GBT27930_CHM || message == GBT27930_CRM;
         case SIM_STAGE_IDENTIFY:
-            return charger ? message == GB27930_BRM || (message == GB27930_BCP && engine->recognized) : message == GB27930_CRM;
+            return charger ? message == GBT27930_BRM || (message == GBT27930_BCP && engine->recognized) : message == GBT27930_CRM;
         case SIM_STAGE_CONFIG:
-            return charger ? message == GB27930_BCP || message == GB27930_BRO : message == GB27930_CML || message == GB27930_CTS;
+            return charger ? message == GBT27930_BCP || message == GBT27930_BRO : message == GBT27930_CML || message == GBT27930_CTS;
         case SIM_STAGE_READY:
-            return charger ? message == GB27930_BRO || (engine->own_ready && (message == GB27930_BCL || message == GB27930_BCS)) : message == GB27930_CRO || message == GB27930_CML || message == GB27930_CTS;
+            return charger ? message == GBT27930_BRO || (engine->own_ready && (message == GBT27930_BCL || message == GBT27930_BCS)) : message == GBT27930_CRO || message == GBT27930_CML || message == GBT27930_CTS;
         case SIM_STAGE_CHARGING:
-            return charger ? message == GB27930_BCL || message == GB27930_BCS || message == GB27930_BSM || message == GB27930_BMV || message == GB27930_BMT || message == GB27930_BSP : message == GB27930_CCS || message == GB27930_CML;
+            return charger ? message == GBT27930_BCL || message == GBT27930_BCS || message == GBT27930_BSM || message == GBT27930_BMV || message == GBT27930_BMT || message == GBT27930_BSP : message == GBT27930_CCS || message == GBT27930_CML;
         case SIM_STAGE_STOPPING:
         case SIM_STAGE_STATISTICS:
-            return charger ? message == GB27930_BSD : message == GB27930_CSD;
+            return charger ? message == GBT27930_BSD : message == GBT27930_CSD;
         case SIM_STAGE_RECOVERY:
-            return charger ? message == GB27930_BRM : message == GB27930_CRM;
+            return charger ? message == GBT27930_BRM : message == GBT27930_CRM;
         default:
             return false;
     }
 }
-static void sim_engine_deliver(sim_engine_t *engine, gb27930_message_t message, const uint8_t *data, size_t len)
+static void sim_engine_deliver(sim_engine_t *engine, gbt27930_message_t message, const uint8_t *data, size_t len)
 {
-    const gb27930_descriptor_t *desc = gb27930_descriptor(message);
+    const gbt27930_descriptor_t *desc = gbt27930_descriptor(message);
     if (desc == NULL || desc->charger == engine->config.charger || engine->unplugged || engine->stage == SIM_STAGE_DONE)
     {
         return;
@@ -459,8 +459,8 @@ static void sim_engine_deliver(sim_engine_t *engine, gb27930_message_t message, 
         sim_log_event("REJECT", "message=%s reason=stage", desc->name);
         return;
     }
-    gb27930_values_t decoded;
-    int rc = gb27930_decode(message, engine->config.version, data, len, &decoded);
+    gbt27930_values_t decoded;
+    int rc = gbt27930_decode(message, engine->config.version, data, len, &decoded);
     if (rc != 0)
     {
         sim_log_event("REJECT", "message=%s reason=decode rc=%d", desc->name, rc);
@@ -498,60 +498,60 @@ int sim_engine_receive(sim_engine_t *engine, const sim_frame_t *frame, uint32_t 
     }
     else
     {
-        gb27930_message_t message = gb27930_find_pgn(pgn);
-        if (message != GB27930_MESSAGE_COUNT)
+        gbt27930_message_t message = gbt27930_find_pgn(pgn);
+        if (message != GBT27930_MESSAGE_COUNT)
         {
-            name = gb27930_descriptor(message)->name;
+            name = gbt27930_descriptor(message)->name;
         }
     }
     return name == NULL ? 0 : sim_engine_inject(engine, true, name, frame->id, frame->data, frame->len);
 }
 /** Stage-specific message selection; optional data never changes mandatory timing rules. */
-static bool sim_engine_active(const sim_engine_t *engine, gb27930_message_t message)
+static bool sim_engine_active(const sim_engine_t *engine, gbt27930_message_t message)
 {
     bool charger = engine->config.charger;
     switch (engine->stage)
     {
         case SIM_STAGE_HANDSHAKE:
-            return charger ? message == GB27930_CHM : message == GB27930_BHM && engine->has_received[GB27930_CHM];
+            return charger ? message == GBT27930_CHM : message == GBT27930_BHM && engine->has_received[GBT27930_CHM];
         case SIM_STAGE_IDENTIFY:
-            return charger ? message == GB27930_CRM : message == GB27930_BRM;
+            return charger ? message == GBT27930_CRM : message == GBT27930_BRM;
         case SIM_STAGE_CONFIG:
-            return charger ? (message == GB27930_CML || message == GB27930_CTS) : message == GB27930_BCP;
+            return charger ? (message == GBT27930_CML || message == GBT27930_CTS) : message == GBT27930_BCP;
         case SIM_STAGE_READY:
-            return charger ? ((message == GB27930_CML || message == GB27930_CTS) && !engine->peer_ready) || (message == GB27930_CRO && engine->peer_ready) : message == GB27930_BRO;
+            return charger ? ((message == GBT27930_CML || message == GBT27930_CTS) && !engine->peer_ready) || (message == GBT27930_CRO && engine->peer_ready) : message == GBT27930_BRO;
         case SIM_STAGE_CHARGING:
-            return charger ? message == GB27930_CCS : (message == GB27930_BCL || message == GB27930_BCS || ((message == GB27930_BSM || message == GB27930_BMV || message == GB27930_BMT || message == GB27930_BSP) && engine->has_received[GB27930_CCS]));
+            return charger ? message == GBT27930_CCS : (message == GBT27930_BCL || message == GBT27930_BCS || ((message == GBT27930_BSM || message == GBT27930_BMV || message == GBT27930_BMT || message == GBT27930_BSP) && engine->has_received[GBT27930_CCS]));
         case SIM_STAGE_STOPPING:
-            return charger ? message == GB27930_CST : message == GB27930_BST;
+            return charger ? message == GBT27930_CST : message == GBT27930_BST;
         case SIM_STAGE_STATISTICS:
-            return charger ? message == GB27930_CSD && (engine->config.version == 2015u || engine->has_received[GB27930_BSD]) : message == GB27930_BSD;
+            return charger ? message == GBT27930_CSD && (engine->config.version == 2015u || engine->has_received[GBT27930_BSD]) : message == GBT27930_BSD;
         case SIM_STAGE_RECOVERY:
-            return charger ? (message == GB27930_CEM || (message == GB27930_CRM && engine->config.reconnect_allowed && !engine->blocked && engine->attempts < engine->config.retries)) : message == GB27930_BEM;
+            return charger ? (message == GBT27930_CEM || (message == GBT27930_CRM && engine->config.reconnect_allowed && !engine->blocked && engine->attempts < engine->config.retries)) : message == GBT27930_BEM;
         case SIM_STAGE_DONE:
-            return engine->completed_stats && (charger ? message == GB27930_CSD : message == GB27930_BSD);
+            return engine->completed_stats && (charger ? message == GBT27930_CSD : message == GBT27930_BSD);
         default:
             return false;
     }
 }
 /** Fill runtime fields, then use validated application codec before injection. */
-static int sim_engine_send_message(sim_engine_t *engine, gb27930_message_t message)
+static int sim_engine_send_message(sim_engine_t *engine, gbt27930_message_t message)
 {
-    if (message == GB27930_CRM)
+    if (message == GBT27930_CRM)
     {
-        (void) gb27930_set(&engine->config.values, "crm_result", engine->recognized ? 170 : 0);
+        (void) gbt27930_set(&engine->config.values, "crm_result", engine->recognized ? 170 : 0);
     }
-    if (message == GB27930_BRO)
+    if (message == GBT27930_BRO)
     {
-        (void) gb27930_set(&engine->config.values, "bro_ready", engine->own_ready ? 170 : 0);
+        (void) gbt27930_set(&engine->config.values, "bro_ready", engine->own_ready ? 170 : 0);
     }
-    if (message == GB27930_CRO)
+    if (message == GBT27930_CRO)
     {
-        (void) gb27930_set(&engine->config.values, "cro_ready", engine->own_ready ? 170 : 0);
+        (void) gbt27930_set(&engine->config.values, "cro_ready", engine->own_ready ? 170 : 0);
     }
-    uint8_t data[GB27930_PAYLOAD_CAPACITY];
+    uint8_t data[GBT27930_PAYLOAD_CAPACITY];
     size_t len;
-    int rc = gb27930_encode(message, engine->config.version, &engine->config.values, data, sizeof(data), &len);
+    int rc = gbt27930_encode(message, engine->config.version, &engine->config.values, data, sizeof(data), &len);
     if (rc != 0)
     {
         return rc;
@@ -560,12 +560,12 @@ static int sim_engine_send_message(sim_engine_t *engine, gb27930_message_t messa
     {
         return -EBUSY;
     }
-    const gb27930_descriptor_t *desc = gb27930_descriptor(message);
+    const gbt27930_descriptor_t *desc = gbt27930_descriptor(message);
     sim_log_event("MESSAGE", "direction=tx name=%s len=%u", desc->name, (unsigned) len);
-    return sim_engine_inject(engine, false, desc->name, gb27930_can_id(message, engine->config.source, engine->config.peer), data, len);
+    return sim_engine_inject(engine, false, desc->name, gbt27930_can_id(message, engine->config.source, engine->config.peer), data, len);
 }
 /** Timeouts begin at a stage trigger until the first valid message, then last reception. */
-static bool sim_engine_expired(sim_engine_t *engine, gb27930_message_t message, uint32_t first_ms)
+static bool sim_engine_expired(sim_engine_t *engine, gbt27930_message_t message, uint32_t first_ms)
 {
     uint32_t origin = engine->has_received[message] ? engine->received_ms[message] : first_ms;
     uint32_t timeout_ms = engine->has_received[message] ? engine->config.timeout_ms[message] : engine->config.first_timeout_ms[message];
@@ -583,69 +583,69 @@ static void sim_engine_timeouts(sim_engine_t *engine)
     switch (engine->stage)
     {
         case SIM_STAGE_HANDSHAKE:
-            (void) sim_engine_expired(engine, charger ? GB27930_BHM : GB27930_CHM, start);
+            (void) sim_engine_expired(engine, charger ? GBT27930_BHM : GBT27930_CHM, start);
             break;
         case SIM_STAGE_IDENTIFY:
             if (!charger)
             {
-                if (engine->now_ms - start >= engine->config.first_timeout_ms[GB27930_CRM])
+                if (engine->now_ms - start >= engine->config.first_timeout_ms[GBT27930_CRM])
                 {
-                    sim_engine_failure(engine, "message_timeout", GB27930_CRM);
+                    sim_engine_failure(engine, "message_timeout", GBT27930_CRM);
                 }
             }
             else
             {
-                (void) sim_engine_expired(engine, engine->recognized ? GB27930_BCP : GB27930_BRM, engine->recognized ? engine->confirm_start_ms : start);
+                (void) sim_engine_expired(engine, engine->recognized ? GBT27930_BCP : GBT27930_BRM, engine->recognized ? engine->confirm_start_ms : start);
             }
             break;
         case SIM_STAGE_CONFIG:
-            (void) sim_engine_expired(engine, charger ? GB27930_BRO : GB27930_CML, start);
+            (void) sim_engine_expired(engine, charger ? GBT27930_BRO : GBT27930_CML, start);
             break;
         case SIM_STAGE_READY:
             uint32_t ready_origin = charger ? engine->parameter_start_ms : (engine->own_ready ? engine->own_ready_ms : start);
             if (engine->now_ms - ready_origin >= engine->config.ready_timeout_ms)
             {
-                sim_engine_failure(engine, "ready_timeout", charger ? GB27930_BRO : GB27930_CRO);
+                sim_engine_failure(engine, "ready_timeout", charger ? GBT27930_BRO : GBT27930_CRO);
                 break;
             }
             if (charger)
             {
-                if (sim_engine_expired(engine, GB27930_BRO, start))
+                if (sim_engine_expired(engine, GBT27930_BRO, start))
                 {
                     break;
                 }
-                if (engine->own_ready && (sim_engine_expired(engine, GB27930_BCL, engine->own_ready_ms) || sim_engine_expired(engine, GB27930_BCS, engine->own_ready_ms)))
+                if (engine->own_ready && (sim_engine_expired(engine, GBT27930_BCL, engine->own_ready_ms) || sim_engine_expired(engine, GBT27930_BCS, engine->own_ready_ms)))
                 {
                     break;
                 }
             }
             else if (engine->own_ready)
             {
-                (void) sim_engine_expired(engine, GB27930_CRO, engine->own_ready_ms);
+                (void) sim_engine_expired(engine, GBT27930_CRO, engine->own_ready_ms);
             }
             break;
         case SIM_STAGE_CHARGING:
             if (charger)
             {
-                if (sim_engine_expired(engine, GB27930_BCL, start) || sim_engine_expired(engine, GB27930_BCS, start))
+                if (sim_engine_expired(engine, GBT27930_BCL, start) || sim_engine_expired(engine, GBT27930_BCS, start))
                 {
                     break;
                 }
-                if (engine->config.version == 2015u || engine->has_received[GB27930_BSM])
+                if (engine->config.version == 2015u || engine->has_received[GBT27930_BSM])
                 {
-                    (void) sim_engine_expired(engine, GB27930_BSM, start);
+                    (void) sim_engine_expired(engine, GBT27930_BSM, start);
                 }
             }
             else
             {
-                (void) sim_engine_expired(engine, GB27930_CCS, start);
+                (void) sim_engine_expired(engine, GBT27930_CCS, start);
             }
             break;
         case SIM_STAGE_STOPPING:
-            (void) sim_engine_expired(engine, charger ? GB27930_BST : GB27930_CST, engine->stop_start_ms);
+            (void) sim_engine_expired(engine, charger ? GBT27930_BST : GBT27930_CST, engine->stop_start_ms);
             break;
         case SIM_STAGE_STATISTICS:
-            (void) sim_engine_expired(engine, charger ? GB27930_BSD : GB27930_CSD, engine->stop_start_ms);
+            (void) sim_engine_expired(engine, charger ? GBT27930_BSD : GBT27930_CSD, engine->stop_start_ms);
             break;
         default:
             break;
@@ -671,7 +671,7 @@ static void sim_engine_events(sim_engine_t *engine)
         }
         else if (strcmp(event->action, "pause") == 0 || strcmp(event->action, "resume") == 0)
         {
-            (void) gb27930_set(&engine->config.values, engine->config.charger ? "ccs_allow" : "bsm_allow", strcmp(event->action, "pause") == 0 ? 0 : 1);
+            (void) gbt27930_set(&engine->config.values, engine->config.charger ? "ccs_allow" : "bsm_allow", strcmp(event->action, "pause") == 0 ? 0 : 1);
         }
         else if (strcmp(event->action, "unplug") == 0)
         {
@@ -688,16 +688,16 @@ static void sim_engine_events(sim_engine_t *engine)
         }
         else if (strcmp(event->action, "set_parameter") == 0)
         {
-            (void) gb27930_set(&engine->config.values, event->parameter, event->value);
+            (void) gbt27930_set(&engine->config.values, event->parameter, event->value);
         }
     }
 }
 /** Stage-local completion/ready decisions are separate from incoming-frame parsing. */
 static void sim_engine_progress(sim_engine_t *engine)
 {
-    if (engine->stage == SIM_STAGE_CHARGING && !engine->config.charger && gb27930_get(&engine->config.values, "bcs_soc_pct") >= 100)
+    if (engine->stage == SIM_STAGE_CHARGING && !engine->config.charger && gbt27930_get(&engine->config.values, "bcs_soc_pct") >= 100)
     {
-        (void) gb27930_set(&engine->config.values, "bst_reason", 1);
+        (void) gbt27930_set(&engine->config.values, "bst_reason", 1);
         sim_engine_stage(engine, SIM_STAGE_STOPPING, "soc_target");
     }
     if (engine->stage == SIM_STAGE_READY && !engine->own_ready && engine->config.ready && engine->now_ms - engine->stage_start_ms >= engine->config.ready_delay_ms &&
@@ -705,13 +705,13 @@ static void sim_engine_progress(sim_engine_t *engine)
     {
         if (!engine->config.precharge_pass)
         {
-            sim_engine_failure(engine, "precharge_failed", GB27930_CRO);
+            sim_engine_failure(engine, "precharge_failed", GBT27930_CRO);
             return;
         }
         engine->own_ready = true;
         engine->own_ready_ms = engine->now_ms;
         sim_log_event("ACTION", "模拟就绪及预充校验 result=pass，测量值来自配置");
-        engine->has_sent[engine->config.charger ? GB27930_CRO : GB27930_BRO] = false;
+        engine->has_sent[engine->config.charger ? GBT27930_CRO : GBT27930_BRO] = false;
     }
     if (engine->stage == SIM_STAGE_CHARGING && engine->config.stop_after_ms != 0u && engine->now_ms - engine->stage_start_ms >= engine->config.stop_after_ms)
     {
@@ -721,11 +721,11 @@ static void sim_engine_progress(sim_engine_t *engine)
     {
         sim_engine_stop(engine, engine->now_ms);
     }
-    if (engine->stage == SIM_STAGE_STOPPING && engine->has_sent[engine->config.charger ? GB27930_CST : GB27930_BST] && engine->has_received[engine->config.charger ? GB27930_BST : GB27930_CST])
+    if (engine->stage == SIM_STAGE_STOPPING && engine->has_sent[engine->config.charger ? GBT27930_CST : GBT27930_BST] && engine->has_received[engine->config.charger ? GBT27930_BST : GBT27930_CST])
     {
         sim_engine_stage(engine, SIM_STAGE_STATISTICS, "stop_acknowledged");
     }
-    if (engine->stage == SIM_STAGE_STATISTICS && engine->has_sent[engine->config.charger ? GB27930_CSD : GB27930_BSD] && engine->has_received[engine->config.charger ? GB27930_BSD : GB27930_CSD])
+    if (engine->stage == SIM_STAGE_STATISTICS && engine->has_sent[engine->config.charger ? GBT27930_CSD : GBT27930_BSD] && engine->has_received[engine->config.charger ? GBT27930_BSD : GBT27930_CSD])
     {
         sim_engine_stage(engine, SIM_STAGE_DONE, "statistics_complete");
     }
@@ -780,10 +780,10 @@ int sim_engine_tick(sim_engine_t *engine, uint32_t now_ms)
         return engine->io_error;
     }
     unsigned first_message = engine->next_message;
-    for (unsigned offset = 0u; offset < GB27930_MESSAGE_COUNT; offset++)
+    for (unsigned offset = 0u; offset < GBT27930_MESSAGE_COUNT; offset++)
     {
-        unsigned idx = (first_message + offset) % GB27930_MESSAGE_COUNT;
-        gb27930_message_t message = (gb27930_message_t) idx;
+        unsigned idx = (first_message + offset) % GBT27930_MESSAGE_COUNT;
+        gbt27930_message_t message = (gbt27930_message_t) idx;
         if (!engine->config.enabled[idx] || !sim_engine_active(engine, message) || (engine->has_sent[idx] && now_ms - engine->sent_ms[idx] < engine->config.period_ms[idx]))
         {
             continue;
@@ -799,9 +799,9 @@ int sim_engine_tick(sim_engine_t *engine, uint32_t now_ms)
         }
         engine->has_sent[idx] = true;
         engine->sent_ms[idx] = now_ms;
-        if (gb27930_descriptor(message)->len > 8u || message == GB27930_BMV || message == GB27930_BMT)
+        if (gbt27930_descriptor(message)->len > 8u || message == GBT27930_BMV || message == GBT27930_BMT)
         {
-            engine->next_message = (idx + 1u) % GB27930_MESSAGE_COUNT;
+            engine->next_message = (idx + 1u) % GBT27930_MESSAGE_COUNT;
         }
     }
     if (engine->stage == SIM_STAGE_DONE && now_ms - engine->stage_start_ms >= 1000u)

@@ -212,7 +212,7 @@ vendor/**
 
 | 位置 | 写法 | 正例 | 反例 |
 |---|---|---|---|
-| 函数名、变量名、目录名、C 文件名 | 全小写 | `gb27930_read_data`、`lwip_tcp.c`、`j1939_tp.c` | `GBT27930_read_data`、`gb27930_readData` |
+| 函数名、变量名、目录名、C 文件名 | 全小写 | `gbt27930_read_data`、`lwip_tcp.c`、`j1939_tp.c` | `GBT27930_read_data`、`gbt27930_readData` |
 | 宏、枚举常量 | 全大写 | `GBT27930_MAX_PAYLOAD`、`J1939_TP_TIMEOUT_MS` | `Gbt27930_Max_Payload` |
 | 注释、文档正文 | 公认写法 | `GB/T 27930`、`lwIP` | — |
 | 文档文件名 | 附录 E 登记写法 | `lwIP-tcp-stack-notes.md` | `lwip_tcp_stack_notes.md` |
@@ -807,7 +807,7 @@ static int32_t flash_write_block(uint8_t *buf, size_t len)
 | 专有名词 | 公认写法 | 位置 | 唯一写法 |
 |---|---|---|---|
 | GB/T 27930 | GB/T 27930 | 宏、枚举常量 | `GBT27930`（如 `GBT27930_MAX_PAYLOAD`） |
-| GB/T 27930 | GB/T 27930 | 目录名、C 文件名、函数/变量名前缀 | `gb27930` |
+| GB/T 27930 | GB/T 27930 | 目录名、C 文件名、函数/变量名前缀 | `gbt27930` |
 | GB/T 27930 | GB/T 27930 | 注释、文档正文 | `GB/T 27930` |
 | GB/T 27930 | GB/T 27930 | 文档文件名 | `GBT27930`（如 `GBT27930-2015-protocol-notes.md`） |
 | J1939 | J1939 | 宏、枚举常量 | `J1939`（如 `GBT27930_J1939_TP_H`） |

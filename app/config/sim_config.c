@@ -88,14 +88,14 @@ void sim_config_defaults(sim_config_t *out_config)
     out_config->tp_t3_ms = 1250u;
     out_config->tp_t4_ms = 1050u;
     out_config->tp_rx_window = 16u;
-    gb27930_defaults(&out_config->values);
-    for (unsigned idx = 0u; idx < GB27930_MESSAGE_COUNT; idx++)
+    gbt27930_defaults(&out_config->values);
+    for (unsigned idx = 0u; idx < GBT27930_MESSAGE_COUNT; idx++)
     {
-        const gb27930_descriptor_t *desc = gb27930_descriptor((gb27930_message_t) idx);
+        const gbt27930_descriptor_t *desc = gbt27930_descriptor((gbt27930_message_t) idx);
         out_config->period_ms[idx] = desc->period_ms;
         out_config->timeout_ms[idx] = desc->timeout_ms;
         out_config->first_timeout_ms[idx] = desc->timeout_ms;
-        out_config->enabled[idx] = idx != GB27930_BMV && idx != GB27930_BMT && idx != GB27930_BSP;
+        out_config->enabled[idx] = idx != GBT27930_BMV && idx != GBT27930_BMT && idx != GBT27930_BSP;
     }
 }
 /** Read named physical values through the codec's single field registry. */
@@ -108,7 +108,7 @@ static bool sim_config_parameters(const cJSON *node, sim_config_t *config)
     for (const cJSON *item = node->child; item != NULL; item = item->next)
     {
         int64_t value;
-        if (!sim_config_integer(item, -1000000, 4294967295LL, &value) || gb27930_set(&config->values, item->string, value) != 0)
+        if (!sim_config_integer(item, -1000000, 4294967295LL, &value) || gbt27930_set(&config->values, item->string, value) != 0)
         {
             return false;
         }
@@ -123,8 +123,8 @@ static bool sim_config_messages(const cJSON *node, sim_config_t *config)
     }
     for (const cJSON *item = node->child; item != NULL; item = item->next)
     {
-        gb27930_message_t message = gb27930_find_message(item->string);
-        if (message == GB27930_MESSAGE_COUNT || !cJSON_IsObject(item))
+        gbt27930_message_t message = gbt27930_find_message(item->string);
+        if (message == GBT27930_MESSAGE_COUNT || !cJSON_IsObject(item))
         {
             return false;
         }
@@ -193,7 +193,7 @@ static bool sim_config_fault(const cJSON *node, sim_fault_rule_t *rule)
         else if (strcmp(key, "message") == 0)
         {
             if (!sim_config_string(item, rule->message, sizeof(rule->message)) ||
-                (gb27930_find_message(rule->message) == GB27930_MESSAGE_COUNT && strcmp(rule->message, "TP_CM") != 0 && strcmp(rule->message, "TP_DT") != 0))
+                (gbt27930_find_message(rule->message) == GBT27930_MESSAGE_COUNT && strcmp(rule->message, "TP_CM") != 0 && strcmp(rule->message, "TP_DT") != 0))
             {
                 return false;
             }
@@ -330,8 +330,8 @@ static bool sim_config_events(const cJSON *node, sim_config_t *config)
         }
         if (strcmp(event->action, "set_parameter") == 0)
         {
-            gb27930_values_t values = config->values;
-            if (gb27930_set(&values, event->parameter, event->value) != 0)
+            gbt27930_values_t values = config->values;
+            if (gbt27930_set(&values, event->parameter, event->value) != 0)
             {
                 return false;
             }
@@ -584,8 +584,8 @@ int sim_config_parse(const char *text, sim_config_t *out_config, char *out_error
         }
     }
     if (rc == 0 && (config.source == config.peer || (config.speed > 1u && !config.software_test) ||
-                       gb27930_get(&config.values, "cml_min_voltage_mv") > gb27930_get(&config.values, "cml_max_voltage_mv") ||
-                       gb27930_get(&config.values, "cml_min_current_ma") > gb27930_get(&config.values, "cml_max_current_ma")))
+                       gbt27930_get(&config.values, "cml_min_voltage_mv") > gbt27930_get(&config.values, "cml_max_voltage_mv") ||
+                       gbt27930_get(&config.values, "cml_min_current_ma") > gbt27930_get(&config.values, "cml_max_current_ma")))
     {
         rc = sim_config_error(out_error, error_capacity, "cross-field constraints");
     }

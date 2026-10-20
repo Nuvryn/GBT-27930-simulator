@@ -118,42 +118,42 @@ static int test_tp(void)
 }
 static int test_codec(void)
 {
-    gb27930_values_t values, decoded;
-    gb27930_defaults(&values);
+    gbt27930_values_t values, decoded;
+    gbt27930_defaults(&values);
     uint8_t data[1785];
     size_t len = 0u;
     const uint8_t bcl[] = {0x68u, 0x10u, 0xB8u, 0x0Bu, 2u};
-    TEST_CHECK(gb27930_encode(GB27930_BCL, 2015u, &values, data, sizeof(data), &len) == 0);
+    TEST_CHECK(gbt27930_encode(GBT27930_BCL, 2015u, &values, data, sizeof(data), &len) == 0);
     TEST_CHECK(len == sizeof(bcl) && memcmp(data, bcl, sizeof(bcl)) == 0);
     const uint8_t bcp[] = {0x6Du, 1u, 0xB8u, 0x0Bu, 0xF4u, 1u, 0x94u, 0x11u, 110u, 0xF4u, 1u, 0xA0u, 0x0Fu};
-    TEST_CHECK(gb27930_encode(GB27930_BCP, 2015u, &values, data, sizeof(data), &len) == 0 && memcmp(data, bcp, sizeof(bcp)) == 0);
-    TEST_CHECK(gb27930_set(&values, "bcl_current_ma", 400001) == -ERANGE);
-    TEST_CHECK(gb27930_set(&values, "bcl_voltage_mv", 400001) == -ERANGE);
+    TEST_CHECK(gbt27930_encode(GBT27930_BCP, 2015u, &values, data, sizeof(data), &len) == 0 && memcmp(data, bcp, sizeof(bcp)) == 0);
+    TEST_CHECK(gbt27930_set(&values, "bcl_current_ma", 400001) == -ERANGE);
+    TEST_CHECK(gbt27930_set(&values, "bcl_voltage_mv", 400001) == -ERANGE);
     for (unsigned version = 2015u; version <= 2023u; version += 8u)
     {
-        for (unsigned idx = 0u; idx < GB27930_MESSAGE_COUNT; idx++)
+        for (unsigned idx = 0u; idx < GBT27930_MESSAGE_COUNT; idx++)
         {
-            TEST_CHECK(gb27930_encode((gb27930_message_t) idx, version, &values, data, sizeof(data), &len) == 0);
-            TEST_CHECK(gb27930_decode((gb27930_message_t) idx, version, data, len, &decoded) == 0);
-            if (idx == GB27930_CCS)
+            TEST_CHECK(gbt27930_encode((gbt27930_message_t) idx, version, &values, data, sizeof(data), &len) == 0);
+            TEST_CHECK(gbt27930_decode((gbt27930_message_t) idx, version, data, len, &decoded) == 0);
+            if (idx == GBT27930_CCS)
             {
                 TEST_CHECK(len == (version == 2015u ? 8u : 7u));
             }
         }
     }
-    TEST_CHECK(gb27930_decode(GB27930_BCL, 2015u, bcl, 4u, &decoded) == -EMSGSIZE);
+    TEST_CHECK(gbt27930_decode(GBT27930_BCL, 2015u, bcl, 4u, &decoded) == -EMSGSIZE);
     const uint8_t cts[] = {0u, 0u, 0u, 1u, 1u, 0x26u, 0x20u};
-    TEST_CHECK(gb27930_encode(GB27930_CTS, 2015u, &values, data, sizeof(data), &len) == 0 && memcmp(data, cts, sizeof(cts)) == 0);
+    TEST_CHECK(gbt27930_encode(GBT27930_CTS, 2015u, &values, data, sizeof(data), &len) == 0 && memcmp(data, cts, sizeof(cts)) == 0);
     data[0] = 0xFAu;
-    TEST_CHECK(gb27930_decode(GB27930_CTS, 2015u, data, len, &decoded) == -EBADMSG);
-    TEST_CHECK(gb27930_set(&values, "bro_ready", 1) == -ERANGE);
-    TEST_CHECK(gb27930_set(&values, "battery_type", 17) == -ERANGE);
+    TEST_CHECK(gbt27930_decode(GBT27930_CTS, 2015u, data, len, &decoded) == -EBADMSG);
+    TEST_CHECK(gbt27930_set(&values, "bro_ready", 1) == -ERANGE);
+    TEST_CHECK(gbt27930_set(&values, "battery_type", 17) == -ERANGE);
     values.cell_count = 1u;
     values.cells_mv[0] = 3650u;
     values.cell_groups[0] = 3u;
-    TEST_CHECK(gb27930_encode(GB27930_BMV, 2015u, &values, data, sizeof(data), &len) == 0);
+    TEST_CHECK(gbt27930_encode(GBT27930_BMV, 2015u, &values, data, sizeof(data), &len) == 0);
     TEST_CHECK(len == 2u && data[0] == 0x6Du && data[1] == 0x31u);
-    TEST_CHECK(gb27930_decode(GB27930_BMV, 2015u, data, len, &decoded) == 0 && decoded.cell_groups[0] == 3u && decoded.cells_mv[0] == 3650u);
+    TEST_CHECK(gbt27930_decode(GBT27930_BMV, 2015u, data, len, &decoded) == 0 && decoded.cell_groups[0] == 3u && decoded.cells_mv[0] == 3650u);
     return 0;
 }
 /** T1/T2/T4, short frames, session collision, early ACK and real send failures. */

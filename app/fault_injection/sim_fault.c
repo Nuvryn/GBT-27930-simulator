@@ -13,7 +13,7 @@ typedef struct
     uint32_t due_ms;
     uint32_t id;
     size_t len;
-    uint8_t data[GB27930_PAYLOAD_CAPACITY];
+    uint8_t data[GBT27930_PAYLOAD_CAPACITY];
 } sim_fault_pending_t;
 struct sim_fault_s
 {
@@ -76,11 +76,11 @@ static int sim_fault_delay(sim_fault_t *fault, bool receive, const char *message
 int sim_fault_apply(sim_fault_t *fault, bool receive, const char *message, const char *stage, uint32_t stage_ms,
     uint32_t now_ms, uint32_t id, const uint8_t *data, size_t len)
 {
-    if (fault == NULL || data == NULL || len > GB27930_PAYLOAD_CAPACITY || strlen(message) >= 16u)
+    if (fault == NULL || data == NULL || len > GBT27930_PAYLOAD_CAPACITY || strlen(message) >= 16u)
     {
         return -EINVAL;
     }
-    uint8_t changed[GB27930_PAYLOAD_CAPACITY];
+    uint8_t changed[GBT27930_PAYLOAD_CAPACITY];
     memcpy(changed, data, len);
     for (size_t idx = 0u; idx < fault->config->fault_count; idx++)
     {

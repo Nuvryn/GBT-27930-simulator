@@ -116,7 +116,7 @@ set_source_files_properties(third_party/easylogger/src/elog_async.c PROPERTIES
 target_include_directories(easylogger SYSTEM PUBLIC ${ROOT}/third_party/easylogger/inc)
 target_include_directories(easylogger PUBLIC ${ROOT}/app/logging)
 target_sources(scaffold_support PRIVATE backends/support/${PLATFORM}/log_sink.c)
-add_library(sim_core STATIC app/protocol/gb27930_codec.c app/config/sim_config.c
+add_library(sim_core STATIC app/protocol/gbt27930_codec.c app/config/sim_config.c
     app/logging/sim_log.c app/transport/j1939_tp.c app/fault_injection/sim_fault.c app/simulator/sim_engine.c)
 target_include_directories(sim_core PUBLIC ${ROOT}/app)
 target_link_libraries(sim_core PUBLIC scaffold_support opensaej1939 cjson easylogger)

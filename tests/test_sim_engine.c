@@ -19,7 +19,7 @@ static int test_engine_send(void *user, const sim_frame_t *frame)
     return 0;
 }
 /** Only published frame I/O is used; no state-machine internals are inspected. */
-static int test_engine_pair(unsigned version, gb27930_message_t dropped, bool expect_failure)
+static int test_engine_pair(unsigned version, gbt27930_message_t dropped, bool expect_failure)
 {
     sim_config_t charger, bms;
     sim_config_defaults(&charger);
@@ -37,17 +37,17 @@ static int test_engine_pair(unsigned version, gb27930_message_t dropped, bool ex
     bms.retries = 0u;
     charger.recovery_wait_ms = 300u;
     bms.recovery_wait_ms = 300u;
-    if ((unsigned) dropped < GB27930_MESSAGE_COUNT)
+    if ((unsigned) dropped < GBT27930_MESSAGE_COUNT)
     {
-        sim_config_t *source = gb27930_descriptor(dropped)->charger ? &charger : &bms;
-        sim_config_t *destination = gb27930_descriptor(dropped)->charger ? &bms : &charger;
+        sim_config_t *source = gbt27930_descriptor(dropped)->charger ? &charger : &bms;
+        sim_config_t *destination = gbt27930_descriptor(dropped)->charger ? &bms : &charger;
         destination->timeout_ms[dropped] = 500u;
         destination->first_timeout_ms[dropped] = 500u;
         source->fault_count = 1u;
         source->faults[0].action = SIM_FAULT_DROP;
         source->faults[0].count = 0u;
         memcpy(source->faults[0].stage, "*", 2u);
-        const char *name = gb27930_descriptor(dropped)->name;
+        const char *name = gbt27930_descriptor(dropped)->name;
         memcpy(source->faults[0].message, name, strlen(name) + 1u);
     }
     s_test_engine_head = s_test_engine_tail = 0u;
@@ -80,7 +80,7 @@ static int test_engine_pair(unsigned version, gb27930_message_t dropped, bool ex
     }
     sim_engine_destroy(left);
     sim_engine_destroy(right);
-    int destination_result = (unsigned) dropped < GB27930_MESSAGE_COUNT && gb27930_descriptor(dropped)->charger ? right_result : left_result;
+    int destination_result = (unsigned) dropped < GBT27930_MESSAGE_COUNT && gbt27930_descriptor(dropped)->charger ? right_result : left_result;
     if (expect_failure ? destination_result >= 0 : (left_result != 1 || right_result != 1))
     {
         fprintf(stderr, "FAIL: version=%u dropped=%d results=%d/%d\n", version, (int) dropped, left_result, right_result);
@@ -90,12 +90,12 @@ static int test_engine_pair(unsigned version, gb27930_message_t dropped, bool ex
 }
 int main(void)
 {
-    if (test_engine_pair(2015u, GB27930_MESSAGE_COUNT, false) != 0 || test_engine_pair(2023u, GB27930_MESSAGE_COUNT, false) != 0)
+    if (test_engine_pair(2015u, GBT27930_MESSAGE_COUNT, false) != 0 || test_engine_pair(2023u, GBT27930_MESSAGE_COUNT, false) != 0)
     {
         return 1;
     }
-    const gb27930_message_t required[] = {GB27930_BRM, GB27930_BCP, GB27930_CML, GB27930_BRO, GB27930_CRO,
-        GB27930_BCL, GB27930_BCS, GB27930_CCS, GB27930_BSM, GB27930_BST, GB27930_CST, GB27930_BSD, GB27930_CSD};
+    const gbt27930_message_t required[] = {GBT27930_BRM, GBT27930_BCP, GBT27930_CML, GBT27930_BRO, GBT27930_CRO,
+        GBT27930_BCL, GBT27930_BCS, GBT27930_CCS, GBT27930_BSM, GBT27930_BST, GBT27930_CST, GBT27930_BSD, GBT27930_CSD};
     for (size_t idx = 0u; idx < sizeof(required) / sizeof(required[0]); idx++)
     {
         if (test_engine_pair(2015u, required[idx], true) != 0)
@@ -103,7 +103,7 @@ int main(void)
             return 1;
         }
     }
-    if (test_engine_pair(2023u, GB27930_BSM, false) != 0)
+    if (test_engine_pair(2023u, GBT27930_BSM, false) != 0)
     {
         return 1;
     }

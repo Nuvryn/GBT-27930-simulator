@@ -61,7 +61,7 @@
 
 `messages` 键为大写报文简称，支持 `enabled`、`period_ms`、`first_timeout_ms`、`timeout_ms`。周期与超时范围 1..3600000。首次等待与后续持续接收分开计时；合法且处于期望阶段的完整负载才刷新计时。禁用本端发送并不会禁用对端对该报文的超时检查。默认禁用 BMV/BMT/BSP，其他报文按当前阶段及角色选择发送。
 
-各报文默认周期/超时见 `app/protocol/gb27930_codec.c` 描述符，首次等待默认等于持续接收超时。报文长度、单位、无效值见本地协议资料和 [基础说明](protocol-core.md)。
+各报文默认周期/超时见 `app/protocol/gbt27930_codec.c` 描述符，首次等待默认等于持续接收超时。报文长度、单位、无效值见本地协议资料和 [基础说明](protocol-core.md)。
 
 其他根字段：`manufacturer` 固定 4 字节、`vin` 固定 17 字节、`region` 固定 3 字节、`software_bytes` 8 个字节、`reserved_bytes` 16 个字节；字节范围 0..255。`cell_voltage_mv` 为 1..256 个 0..24000 mV 的 10 mV 整数倍；`cell_group` 为同长度 0..15 分组号，省略为 0；`temperature_degc` 为 1..128 个 −50..200 ℃整数。
 
