@@ -1,0 +1,326 @@
+{
+  "source": "D:\\BaiduSyncdisk\\coding_test\\platform-framwork-template",
+  "imported_on": "2026-10-20",
+  "files": [
+    {
+      "path": "osal/osal_types.h",
+      "source_sha256": "861f622bc652f3d783b5cb2ea69410852156573046d9b969d5684ff43fb69ce6"
+    },
+    {
+      "path": "backends/support/zephyr/args.c",
+      "source_sha256": "8ec4ef2a1c0303369750aad60c2ffa14f69a9404e92efc6a0aa034b72f28ac20"
+    },
+    {
+      "path": "backends/support/linux/console.c",
+      "source_sha256": "6d4de9b74d88bf104b78d47f83b46edfad3093dc23830ce4788dc0ec013b9fd9"
+    },
+    {
+      "path": "backends/support/linux/config_source.c",
+      "source_sha256": "eda76fd8233f63b1e0ec740c05e489fa34a4b614fb7715559c9d00720d49f38c"
+    },
+    {
+      "path": "backends/support/linux/can_bus.c",
+      "source_sha256": "23ebaa3795219725adac3f1302f4858094f0381a5318a2b376d401fbb04546d6"
+    },
+    {
+      "path": "backends/support/linux/args.c",
+      "source_sha256": "534f24fb3fdfcead51ef7671c2672d28f893f544a128487e4276c7bac0a0b12a"
+    },
+    {
+      "path": "backends/osal/zephyr/osal_zephyr_priv.h",
+      "source_sha256": "d34a9821f1f91f0104e97d168290f56f881646a0f9c3a79afa5ae6446e90036d"
+    },
+    {
+      "path": "backends/osal/zephyr/osal_task.c",
+      "source_sha256": "5fd78397f84edee9713d72e8ca69c98a29229dff7d0f6b8e3207d83804b7c682"
+    },
+    {
+      "path": "backends/support/zephyr/can_bus.c",
+      "source_sha256": "d597b35f5cf96b990f944358ca1b76beb5eb8f277183353c91c095bd657e134e"
+    },
+    {
+      "path": "backends/osal/zephyr/osal_sem.c",
+      "source_sha256": "cb7ad29fbfa52ab7a30d4731b6c5af9a28440ea564af78be0a26cf1dd68ee500"
+    },
+    {
+      "path": "backends/osal/zephyr/osal_mq.c",
+      "source_sha256": "2508234fe36c4736ea95e746b016851460d64d3ccd33d969ac38b1edc246a04c"
+    },
+    {
+      "path": "backends/osal/zephyr/osal_mem.c",
+      "source_sha256": "2f45f9e1e7ca5a1e9eb6f99850cefe56191c8771cc54ec3462b2f28167d3bb85"
+    },
+    {
+      "path": "backends/osal/posix/osal_task.c",
+      "source_sha256": "a82a99764d267c52ba764c9c2f75c9fbda608e02102fd756b73a477f4f31b598"
+    },
+    {
+      "path": "backends/osal/posix/osal_sem.c",
+      "source_sha256": "08db48a73d97496e9b4348168e7dcac8c9a7671afbda797f1fe6e7e92438235b"
+    },
+    {
+      "path": "backends/osal/posix/osal_posix_internal.h",
+      "source_sha256": "3d27a8881809e2875b5e56c66ef509eec3b9b83b88710aa5f86a28e2a4aff036"
+    },
+    {
+      "path": "backends/osal/posix/osal_posix_internal.c",
+      "source_sha256": "c29ef93bd6b78a74556aa59b8508361e806451c1ad47500809fc1659fc74d20e"
+    },
+    {
+      "path": "backends/osal/posix/osal_mutex.c",
+      "source_sha256": "0f85bd1e16914f0b88599692ce2c910c54e10225d98872aaf92d276c7166e152"
+    },
+    {
+      "path": "backends/osal/zephyr/osal_mutex.c",
+      "source_sha256": "3624ea52cc16d4fb37122763499b5d7ee1ace3aa3c36662498830eb68cbe86b5"
+    },
+    {
+      "path": "backends/osal/posix/osal_mq.c",
+      "source_sha256": "cdd96082970b8f3365bd78f47af5d2188e006cad762c5022f0e1a682f52ef17b"
+    },
+    {
+      "path": "backends/support/zephyr/config_source.c",
+      "source_sha256": "d116d7e161c5346a2f660c6e994ac78644b9b29667e416547c3eb68ac5cfe54d"
+    },
+    {
+      "path": "cmake/toolchains/arm-linux-gnueabihf.cmake",
+      "source_sha256": "c7a7e82aac73c7c3e907108a22a3add27a60c6d7928ee992d2d603cadc1f5abb"
+    },
+    {
+      "path": "CMakeLists.txt",
+      "source_sha256": "00c1773b0fc954c7b846c4053362fec0201bd6f6f1e9c9900266f2eea737499a"
+    },
+    {
+      "path": "app/main.c",
+      "source_sha256": "2e6959f66e770ec2fe8bfd89a8e83b697aafa73a1e808c4bd9f052da7fe6b70f"
+    },
+    {
+      "path": "scripts/build-armhf.sh",
+      "source_sha256": "38bf3309bdb8f540f35713c1a74badee502da51a1d3fee82e8f1d0194ede8201"
+    },
+    {
+      "path": "config/default.json",
+      "source_sha256": "253849548ad78ee1545901005a10b9672f61c8d46a6d8e400ec475a17b40ad6c"
+    },
+    {
+      "path": "cmake/zephyr_stubs/zephyr/sys/util.h",
+      "source_sha256": "0fd767fb76d8e6ea2625ee2550709847973bf49d2b53629707e7cb95ca916bfb"
+    },
+    {
+      "path": "cmake/zephyr_stubs/zephyr/drivers/uart.h",
+      "source_sha256": "f41d6a16d3739f84a5f49ad4d0ee62eaa8c43476ae864c250571590b3d45bdff"
+    },
+    {
+      "path": "cmake/zephyr_stubs/zephyr/drivers/spi.h",
+      "source_sha256": "d7e8177c5501fa39b8be69fcfbdfe193ac505fa63665ff663779740f41a09459"
+    },
+    {
+      "path": "backends/support/zephyr/console.c",
+      "source_sha256": "f19ac76b47b846620d3adb6b99795c08f439ea8d46920c4cbb878f9ea30e711d"
+    },
+    {
+      "path": "cmake/zephyr_stubs/zephyr/drivers/pwm.h",
+      "source_sha256": "9f588d1fc4194e47925dbb68bd1e0ce5120670b8cd5e7e6fe8640cbfd2a274c1"
+    },
+    {
+      "path": "cmake/zephyr_stubs/zephyr/drivers/gpio.h",
+      "source_sha256": "0ab16a5f6d0ebf67e76cece9d56c4c47d52ff2094e916e9efb12c02430272daf"
+    },
+    {
+      "path": "cmake/zephyr_stubs/zephyr/drivers/flash.h",
+      "source_sha256": "01e999fe4be55962101e05b67c12bf77be36e159a1bf450d5eaf02ee795bb7a1"
+    },
+    {
+      "path": "cmake/zephyr_stubs/zephyr/drivers/entropy.h",
+      "source_sha256": "6098ef34424ea823afac33bbc7d62553ab82be9cec9f775614af7735966d64ba"
+    },
+    {
+      "path": "cmake/zephyr_stubs/zephyr/drivers/can.h",
+      "source_sha256": "e3f39dbb4048d67d4419dc6de77692aeeae7257529692d29ced9c8ca9ba49772"
+    },
+    {
+      "path": "cmake/zephyr_stubs/zephyr/drivers/adc.h",
+      "source_sha256": "e905ce4eb12a81a7db311052e85416a6023a5a1e711ff1ce7ec0e02af6ea80a0"
+    },
+    {
+      "path": "cmake/zephyr_stubs/zephyr/kernel.h",
+      "source_sha256": "6e18f2878c00f4ca6631a373891763b76d621eb764d8943cb03c9c8fa2e6e454"
+    },
+    {
+      "path": "cmake/zephyr_stubs/zephyr/device.h",
+      "source_sha256": "1b9ccf9d4c687efd8762fd97fa36d5354bf8a04c57dcb605ac0463acc656c8e3"
+    },
+    {
+      "path": "cmake/zephyr_stubs/zephyr/drivers/i2c.h",
+      "source_sha256": "3864f77fd804fda3e1d477266633cb6f1e36b2caaf32d5e68ae6aa9457fcce05"
+    },
+    {
+      "path": "backends/osal/posix/osal_mem.c",
+      "source_sha256": "6d6dd93438751c76cb5430e6e491c01658312d78aa79f7cd1e03684affa1e5cc"
+    },
+    {
+      "path": "backends/hal/zephyr/hal_zephyr_priv.h",
+      "source_sha256": "0311b783214800be285585c491e6cea3de34f47bf580e0c072768dbe4f5138b3"
+    },
+    {
+      "path": "backends/hal/zephyr/hal_uart.c",
+      "source_sha256": "ef0328067491cbf58ef467ead6aeeed7a135f5e5851d610bc0e42e4ffbfcb2de"
+    },
+    {
+      "path": "support/console.h",
+      "source_sha256": "b41520ca61e34df33b5701600cd6c303484cc95f1d3880c5544d3e8ed561b6d9"
+    },
+    {
+      "path": "support/config_source.h",
+      "source_sha256": "e1308935a91c59456513ad20740e83e4d25669b2190b63c088c2edf7ba697e9a"
+    },
+    {
+      "path": "support/can_bus.h",
+      "source_sha256": "1f64746231817d5b39e58ceee370bff7209e840ce640564b3b80139bfb762ea8"
+    },
+    {
+      "path": "support/args.h",
+      "source_sha256": "0375575c41cbbca68c17767a1c1c18735a13681aae4a4292d961faa23d6875d6"
+    },
+    {
+      "path": "hal/hal.h",
+      "source_sha256": "d13fa358e739995fdbaa3f9db88e73a2ed026faa63e10298916eaf7d4da0273a"
+    },
+    {
+      "path": "hal/hal_uart.h",
+      "source_sha256": "72c20b7d37ffeed661ed77f57705d01f5043d051cc6fc74a05ec4569b1ced95a"
+    },
+    {
+      "path": "hal/hal_spi.h",
+      "source_sha256": "3d0b88dde7852d3f518e5dd84f1521066511ba2c44be7fd5c774d0106a823fb2"
+    },
+    {
+      "path": "support/README.md",
+      "source_sha256": "a31c8f1acbe1aabdc43cb9ec5f2436a4231c745d111fcd0a3e1d114c14b399b6"
+    },
+    {
+      "path": "hal/hal_rng.h",
+      "source_sha256": "478444c2ac8f8c78c59cc854bc7ba7056516e931a47bab33005b1d6780656f4c"
+    },
+    {
+      "path": "hal/hal_i2c.h",
+      "source_sha256": "d43c3d54fb659b1cd1e3458a4ad5fd1fc4dcbf3ea8d760ee9d7d1bf0d445eceb"
+    },
+    {
+      "path": "hal/hal_gpio.h",
+      "source_sha256": "793c6a961d510b64d06343938adafe2c5c266fe17f4e9fc0c3b36df49c98b5fd"
+    },
+    {
+      "path": "hal/hal_flash.h",
+      "source_sha256": "19d46d8d5be42a761333d36d6ed9df0ded757829250561c47510c872e10e2c48"
+    },
+    {
+      "path": "hal/hal_dev.h",
+      "source_sha256": "e82ff26924b8f542a036527108caea1c1921018cfbd5e676f900a326efa33d15"
+    },
+    {
+      "path": "hal/hal_can.h",
+      "source_sha256": "fa2b6101dff54b46df40051e8e4667ff66ff952c89de14fe384594ed99bf35ad"
+    },
+    {
+      "path": "hal/hal_adc.h",
+      "source_sha256": "04bdde98290dfcf7db95a63524cb4f7a22e38834c7a2a259321db4f2f9c114f1"
+    },
+    {
+      "path": "osal/osal.h",
+      "source_sha256": "9e2b6291974149932dccbe3f57bc0963349605566bcb7fbfbf33ced7d97e219b"
+    },
+    {
+      "path": "hal/hal_pwm.h",
+      "source_sha256": "a000cf82e1da661c58dfbc6e02ac4ca1240f085f2f0c29407fee8e046a22e08d"
+    },
+    {
+      "path": "backends/hal/linux/DEVIATIONS.md",
+      "source_sha256": "ca5c6f15bc985de5c358c440d96cc1e0c0920c5836643aa9ec03c7dd6706858c"
+    },
+    {
+      "path": "backends/hal/linux/hal_adc.c",
+      "source_sha256": "4958e91791ece47ef6a966ca5b3a53ec65b18e2246ee6de7f8526f765968432f"
+    },
+    {
+      "path": "backends/hal/linux/hal_can.c",
+      "source_sha256": "860527d898a6c5d23a396dac06cdba163800ccab0fe6d232bd5450b40f8724ed"
+    },
+    {
+      "path": "backends/hal/zephyr/hal_spi.c",
+      "source_sha256": "a5073e4266dd405e0b64e91ff09412797ab56a0b5c5f66de28f773298392cdfe"
+    },
+    {
+      "path": "backends/hal/zephyr/hal_rng.c",
+      "source_sha256": "12f655b59188e725c2e74aee8c347ba1a706010a89aa19cefdd07397335431d8"
+    },
+    {
+      "path": "backends/hal/zephyr/hal_pwm.c",
+      "source_sha256": "f3bd017ddb9f700f79a050581580c29e556eab66e4a26ee1f613982f35e45272"
+    },
+    {
+      "path": "backends/hal/zephyr/hal_i2c.c",
+      "source_sha256": "eac55d2e9bffd56d0842c8b236f4dcf2ada6af45764d18a490a9f03187767e77"
+    },
+    {
+      "path": "backends/hal/zephyr/hal_gpio.c",
+      "source_sha256": "b3e7c5bc515f421786e9507490c744662e4077d309579d34209fee9da3adc968"
+    },
+    {
+      "path": "backends/hal/zephyr/hal_flash.c",
+      "source_sha256": "5e31fcf66e97d9a67b776776b8e40af5da5716d8a52496d7759520859ac49cbf"
+    },
+    {
+      "path": "backends/hal/zephyr/hal_can.c",
+      "source_sha256": "8e4962bcc0f74018b537aaa0a179c5a302b4a70449048479ef74b29123b8e517"
+    },
+    {
+      "path": "backends/hal/zephyr/hal_adc.c",
+      "source_sha256": "4e7a10d1101bdb6d8dcffa58944734d466ed66f665538409958b7ea488c437b5"
+    },
+    {
+      "path": "backends/hal/linux/hal_uart.c",
+      "source_sha256": "7f253cf258e6d3adc79310c4b1a6bb7f3ee3581aabfa6204ebab143181c575bc"
+    },
+    {
+      "path": "backends/hal/linux/hal_spi.c",
+      "source_sha256": "fa4abc1c79915746e475eb93072fa57a4670f75c7a8154423e2ee5adc05c5b29"
+    },
+    {
+      "path": "backends/hal/linux/hal_rng.c",
+      "source_sha256": "b5524afefb852fac8d46c0e6852114f4c0d09fce521db8a725fa9ee2fac5ad9e"
+    },
+    {
+      "path": "backends/hal/linux/hal_pwm.c",
+      "source_sha256": "9221ae9516ca0b0971fe29eb6833dd7229f4df1f9327b2268093af2cf3180886"
+    },
+    {
+      "path": "backends/hal/linux/hal_linux_priv.h",
+      "source_sha256": "fe25086389321917a27c1d02fe00862b07b088bc8a2e3a3b056b5ebc25d3da2c"
+    },
+    {
+      "path": "backends/hal/linux/hal_linux_priv.c",
+      "source_sha256": "43dad838a8be1a7b81f5870f39a1dde6a45b2e775218530cff75f46d2ac96ce3"
+    },
+    {
+      "path": "backends/hal/linux/hal_i2c.c",
+      "source_sha256": "d8ae6ebe196e693f7b3f309013fad21f76591839ed68706a1509ca2cc517e23a"
+    },
+    {
+      "path": "backends/hal/linux/hal_gpio.c",
+      "source_sha256": "56fb872c93b39bcb39d1bf71bff754cca026efd5afb6ec6bd2320f45d5ac29c6"
+    },
+    {
+      "path": "backends/hal/linux/hal_flash.c",
+      "source_sha256": "d996cf6b21089508240025e8ececa8ed60241fd47effc93843f76981df81d451"
+    },
+    {
+      "path": ".gitattributes",
+      "source_sha256": "4c8b8dccacc5b22d8c97e7ce9a0d8888452eb16df1bd461b6da295da8a589dbe"
+    },
+    {
+      "path": "docs/architecture-spec.md",
+      "source_sha256": "cceae859f20b19d5a449683cf7e3201477474207c3361ccdc286d87c625f1814"
+    }
+  ]
+}

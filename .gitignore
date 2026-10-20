@@ -53,3 +53,8 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# CMake builds and runtime output
+build*/
+compile_commands.json
+*.log

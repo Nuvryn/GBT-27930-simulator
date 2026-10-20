@@ -1,0 +1,20 @@
+---
+BasedOnStyle: LLVM
+BreakBeforeBraces: Allman
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+IndentCaseLabels: true
+IndentAccessModifiers: false
+NamespaceIndentation: All
+IndentPPDirectives: None
+AlignAfterOpenBracket: DontAlign
+SpaceAfterCStyleCast: true
+PointerAlignment: Right
+SpaceBeforeParens: Custom
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+ColumnLimit: 0
+SortIncludes: Never
+ReflowComments: false
+AllowShortFunctionsOnASingleLine: None

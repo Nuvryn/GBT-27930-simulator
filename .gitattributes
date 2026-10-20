@@ -1,0 +1,19 @@
+# Normalize all text files to LF in the repository and working tree.
+# This project builds on Linux/WSL; CRLF in *.sh / Makefiles breaks bash.
+* text=auto eol=lf
+
+*.sh    text eol=lf
+*.c     text eol=lf
+*.h     text eol=lf
+*.py    text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.cmake text eol=lf
+*.txt   text eol=lf
+
+# Binary artifacts (never normalize)
+*.png  binary
+*.jpg  binary
+*.pdf  binary
+*.o    binary
+*.a    binary
