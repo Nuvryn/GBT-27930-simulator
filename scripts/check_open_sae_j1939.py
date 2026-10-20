@@ -7,7 +7,7 @@ from pathlib import Path
 
 def main():
     root = Path(__file__).resolve().parent.parent
-    manifest = json.loads((root / "docs/open-sae-j1939-manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads((root / "third_party/manifests/open-sae-j1939-manifest.json").read_text(encoding="utf-8"))
     vendor = root / "third_party/open_sae_j1939"
     expected = {entry["path"]: entry["sha256_lf"] for entry in manifest["files"]}
     actual = {path.relative_to(vendor).as_posix(): path for path in vendor.rglob("*") if path.is_file()}

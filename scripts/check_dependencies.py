@@ -9,7 +9,7 @@ import sys
 
 def main():
     root = Path(__file__).resolve().parent.parent
-    manifest = json.loads((root / "docs/dependencies-manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads((root / "third_party/manifests/dependencies-manifest.json").read_text(encoding="utf-8"))
     errors = []
     for component in manifest["components"]:
         directory = root / component["directory"]

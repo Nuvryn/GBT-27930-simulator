@@ -19,6 +19,6 @@ CMake 仅对 elog_async.c 的编译符号做重命名以接入该检查，原始
 文件访问仅由 Linux `log_sink` 后端完成；Zephyr 文件输出返回不支持。
 cJSON 编译时限制嵌套深度为 32，配置文件上限 64 KiB。
 
-核验命令：`python3 scripts/check_dependencies.py`。新组件哈希见 `dependencies-manifest.json`；
+核验命令：`python3 scripts/check_dependencies.py`。新组件哈希见 [依赖哈希清单](../third_party/manifests/dependencies-manifest.json)；
 Open-SAE-J1939 使用其单独的快照清单。升级时固定新提交、更新登记和哈希，并重跑协议与构建回归。
 如需修改第三方文件，应单独记录补丁，调整豁免清单，再实施变更；本次未修改上游源码。

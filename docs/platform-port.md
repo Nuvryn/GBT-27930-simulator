@@ -3,7 +3,7 @@
 ## 来源与范围
 
 2026-10-20 从本机 `D:\BaiduSyncdisk\coding_test\platform-framwork-template` 导入。
-来源未包含 Git 元数据，按文件 SHA-256 记录快照，见同目录 `platform-import-manifest.json`。
+来源未包含 Git 元数据，按文件 SHA-256 记录快照，见 [平台导入清单](../third_party/manifests/platform-import-manifest.json)。
 该清单记录源文件哈希和导入路径；后续同步时重新计算本地文件哈希进行比较。
 
 导入 `osal/`、`hal/`、`support/`、`backends/`、`cmake/`，以及最小示例、配置、构建脚本和架构规范。

@@ -14,7 +14,7 @@
 | 升级方式 | 固定新提交 → 替换上游文件 → 更新哈希清单及本说明 → 核查已知问题 → 重跑测试与目标平台构建 |
 
 依赖以源码随仓库保存，构建无需网络，也不自动跟随上游 main。
-上游 SHA-256 清单见 `open-sae-j1939-manifest.json`，可运行：
+上游 SHA-256 清单见 [Open-SAE-J1939 哈希清单](../third_party/manifests/open-sae-j1939-manifest.json)，可运行：
 
 ```bash
 python3 scripts/check_open_sae_j1939.py
