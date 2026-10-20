@@ -17,7 +17,7 @@
 | `can_interface` | `can0` | 接口名，最多 15 字节 |
 | `source` / `peer` | 桩 86/244；BMS 244/86 | 0..253，不能相同 |
 | `software_test` / `speed` | false / 1 | 加速仅用于双方受控软件回归，速度 1..100 |
-| `file_log` / `log_path` | false / 空 | 控制台始终输出；启用文件需指定路径，最多 255 字节；每次启动覆盖该文件 |
+| `file_log` / `log_path` | true / 空 | 默认生成 logs/YYYYMMDD_HHMMSS_纳秒_PID.log，使用平台本地时间；显式路径最多 255 字节并保留覆盖行为；false 关闭文件保存 |
 | `self_test_pass` | true | 自检结果；false 进入故障处理 |
 | `parameters_match` | true | 场景给出的参数匹配条件，同时仍校验收到的电压与能力范围 |
 | `precharge_pass` | true | 预充结果；false 不进入正常充电 |
@@ -112,6 +112,8 @@
 
 帧日志包含协议时间、方向、29 位 ID、DLC 和全部字节；MESSAGE、STATE、TP、ERROR、FAULT、EVENT、ACTION 记录其上下文。ACTION 全部是模拟，不访问硬件。CCS 等采集值来自配置、请求钳位后的模拟输出或事件，不反读 ADC。
 
-正常完成输出 `RESULT status=PASS` 并退出 0；任何一次协议故障会保留本次进程的失败结果，即使后来成功重连并完成统计。场景报告的 PASS 表示观察到了预期结果，因此有意丢包的场景可以在模拟器退出 1 时判为 PASS。
+采用 EasyLogger 原生异步缓冲，由独立线程批量输出。64 KiB 缓冲预先分配，协议线程不等待磁盘/终端 I/O；缓冲满会拒绝整条日志并锁存 ENOSPC，最终退出非零。写入失败同样锁存。退出先停止生产、排空并 join 线程，再关闭文件；日志保证到达 stdio 刷新层，不等于断电持久化。生成文件名受 Linux TZ/系统时区影响，可使用 `TZ=Asia/Shanghai` 指定中国时区。
+
+正常完成输出 `RESULT status=PASS` 并退出 0；任何一次协议故障会保留本次进程的失败结果，即使后来成功重连并完成统计。异步写入在最后排空时失败也会令进程退出非零，工作线程另输出带错误码的 FAIL 诊断。场景报告的 PASS 表示观察到了预期结果，因此有意丢包的场景可以在模拟器退出 1 时判为 PASS。
 
 自动运行器独立检查双方退出码、日志证据和正常状态顺序；不读取引擎内部状态。输出包含 PASS/FAIL/SKIP、错误说明、退出码和证据目录。支持 `--case <名称>`、`--build-dir <路径>`、`--real-time`。真实时间正常用例检查 DT 至少 10 ms、BCL/CCS 周期 50..100 ms；100 ms 上界用于暴露本机调度迟滞，不作为标准允许偏差。

@@ -49,6 +49,11 @@
           "path": "src/elog.c",
           "upstream_path": "easylogger/src/elog.c",
           "sha256_lf": "6858ef276c8e66fe0c621b04fbee51902f85a0831482e48e456f9d5f886d5e00"
+        },
+        {
+          "path": "src/elog_async.c",
+          "sha256_lf": "2a3d496f9e7e2a7b0135c0ffbecbbf367b484134cf20909853338a8f919b8e6c",
+          "upstream_path": "easylogger/src/elog_async.c"
         }
       ]
     }

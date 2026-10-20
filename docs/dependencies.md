@@ -5,14 +5,17 @@
 | 组件 | 来源 | 固定提交 | 许可证 | 用途 |
 |---|---|---|---|---|
 | cJSON | https://github.com/DaveGamble/cJSON | `6d9f2443ab071f86e5d9b43025a40929ec41c46c` | MIT，`third_party/cjson/LICENSE` | 配置解析 |
-| EasyLogger | https://github.com/armink/EasyLogger | `806328e131836662fa83dd43364a53f699fd76ac` | MIT，`third_party/easylogger/LICENSE` | 同步日志格式与输出 |
+| EasyLogger | https://github.com/armink/EasyLogger | `806328e131836662fa83dd43364a53f699fd76ac` | MIT，`third_party/easylogger/LICENSE` | 日志格式化、异步缓冲与线程输出 |
 | Open-SAE-J1939 | https://github.com/DanielMartensson/Open-SAE-J1939 | `2a890c58c6a199d6a6ef793b71bac3c53f594823` | MIT，`third_party/open_sae_j1939/LICENSE` | TP 报文生成与接收存储 |
 
-cJSON 只导入 `cJSON.c`、`cJSON.h`、LICENSE；EasyLogger 只导入头文件、同步日志与工具源码及 LICENSE。
+cJSON 只导入 `cJSON.c`、`cJSON.h`、LICENSE；EasyLogger 导入头文件、日志核心、异步环形缓冲 elog_async.c、工具源码及 LICENSE；均来自原固定提交。
 上游文件内容均未修改，保留原命名、注释和格式。换行比较统一为 LF。
 `spec-exempt.txt` 仅豁免上述第三方目录；自有配置、平台后端和适配层均不豁免。
 
-项目自己的 EasyLogger 配置位于 `app/logging/elog_cfg.h`，关闭异步与缓存模式，所有调用均在协议线程执行。
+项目自己的 EasyLogger 配置位于 `app/logging/elog_cfg.h`，启用 ELOG_ASYNC_OUTPUT_ENABLE 和 64 KiB 缓冲。
+不启用上游内置 pthread 路径，线程、通知、互斥与 join 由平台 log_sink 后端提供。生产者只格式化和入队，工作线程读缓冲后释放互斥再执行 I/O。
+上游满缓冲会截断记录；自有包装在入队前检查待消费字节数，容量不足时拒绝整条、锁存 ENOSPC 并令会话失败。
+CMake 仅对 elog_async.c 的编译符号做重命名以接入该检查，原始文件内容与固定哈希保持一致。
 文件访问仅由 Linux `log_sink` 后端完成；Zephyr 文件输出返回不支持。
 cJSON 编译时限制嵌套深度为 32，配置文件上限 64 KiB。
 

@@ -1,7 +1,10 @@
-/** @file elog_cfg.h @brief Project-owned EasyLogger configuration, synchronous output. */
+/** @file elog_cfg.h @brief EasyLogger ring buffer; platform worker drains asynchronously. */
 #ifndef APP_LOGGING_ELOG_CFG_H
 #define APP_LOGGING_ELOG_CFG_H
 #define ELOG_OUTPUT_ENABLE
+#define ELOG_ASYNC_OUTPUT_ENABLE
+#define ELOG_ASYNC_OUTPUT_LVL 0
+#define ELOG_ASYNC_OUTPUT_BUF_SIZE (64u * 1024u)
 #define ELOG_OUTPUT_LVL 5
 #define ELOG_LINE_BUF_SIZE 2048
 #define ELOG_LINE_NUM_MAX_LEN 5

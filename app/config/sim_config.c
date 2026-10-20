@@ -69,6 +69,7 @@ void sim_config_defaults(sim_config_t *out_config)
     out_config->source = 0x56u;
     out_config->peer = 0xF4u;
     out_config->speed = 1u;
+    out_config->file_log = true;
     memcpy(out_config->can_interface, "can0", 5u);
     out_config->self_test_pass = true;
     out_config->parameters_match = true;
@@ -582,7 +583,7 @@ int sim_config_parse(const char *text, sim_config_t *out_config, char *out_error
             break;
         }
     }
-    if (rc == 0 && (config.source == config.peer || (config.speed > 1u && !config.software_test) || (config.file_log && config.log_path[0] == '\0') ||
+    if (rc == 0 && (config.source == config.peer || (config.speed > 1u && !config.software_test) ||
                        gb27930_get(&config.values, "cml_min_voltage_mv") > gb27930_get(&config.values, "cml_max_voltage_mv") ||
                        gb27930_get(&config.values, "cml_min_current_ma") > gb27930_get(&config.values, "cml_max_current_ma")))
     {

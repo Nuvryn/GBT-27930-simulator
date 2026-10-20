@@ -1,1 +1,7 @@
-{"role":"bms","version":2023,"can_interface":"can0","stop_after_ms":0}
+{
+  "role": "bms",
+  "version": 2023,
+  "can_interface": "can0",
+  "stop_after_ms": 0,
+  "file_log": true
+}

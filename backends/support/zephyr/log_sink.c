@@ -4,6 +4,33 @@
 #include "support/log_sink.h"
 #include "support/console.h"
 #include <errno.h>
+int log_sink_start(log_sink_drain_cb_t drain_cb, void *cb_user)
+{
+    (void) drain_cb;
+    (void) cb_user;
+    return -ENOSYS;
+}
+void log_sink_notify(void)
+{
+}
+int log_sink_stop(void)
+{
+    return 0;
+}
+void log_sink_lock(void)
+{
+}
+void log_sink_unlock(void)
+{
+}
+void log_sink_fail(int error)
+{
+    (void) error;
+}
+const char *log_sink_path(void)
+{
+    return "";
+}
 int log_sink_open(bool file_enabled, const char *path)
 {
     (void) path;

@@ -6,11 +6,11 @@
 
 | 检查 | 结果 | 证据/复现入口 |
 |---|---|---|
-| Linux 严格告警构建与 11 项 CTest | PASS | `scripts/verify_simulator.sh --prepare-vcan`；`build/Testing/Temporary/LastTest.log` |
+| Linux 严格告警构建与 12 项 CTest | PASS | `scripts/verify_simulator.sh --prepare-vcan`；`build/Testing/Temporary/LastTest.log` |
 | 2015、2023 双角色正常充电及双方主动结束 | PASS | 四个 normal 场景及独立可控时间引擎测试 |
 | 真实时间双角色正常充电 | PASS | `scripts/verify_real_time.sh`；`report_real_time_2015.json` / `report_real_time_2023.json` |
 | DT 最小 10 ms 与 BCL/CCS 50 ms 调度 | PASS | 独立 TP 可控时间检查、真实时间日志间隔；后者允许至 100 ms 用于本机回归 |
-| ASan + UBSan | PASS | `scripts/verify_build_matrix.sh` 的 4 项核心/CLI 检查；启动、异常及最大 TP 负载路径 |
+| ASan + UBSan | PASS | `scripts/verify_build_matrix.sh` 的 5 项日志/核心/CLI 检查；启动、异常及最大 TP 负载路径 |
 | 固定依赖完整性 | PASS | `scripts/check_dependencies.py`，原始 Open-SAE-J1939 58 文件、cJSON、EasyLogger |
 | ARM Linux 交叉编译 | PASS | `build-armhf/gbt27930_simulator`；ELF32 ARM EABI5，v7，VFP 寄存器传参 |
 | Zephyr 骨架编译 | PASS | `build-zephyr/gbt27930_simulator`；仅桩头文件构建，无真实 SDK/设备运行 |
@@ -78,3 +78,12 @@ BRM 使用资料勘误后的 49 字节；资料称 23 种报文，但逐项仅�
 5. 缺少设备或无法满足外部电气条件记 SKIP；协议证据不符记 FAIL；不得用双方软件互通或编译通过代替实物 PASS。
 
 实物记录至少包含版本、角色、设备标识、配置摘要、阶段、预期响应、实际响应、PASS/FAIL/SKIP 及证据路径。硬件缺席不会阻止软件侧开发，但实物交付验收仍未完成。
+## 异步日志专项回归
+
+- sim_log：先填满无读取者的 stdout 管道，确认日志生产者仍能返回；随后启动读取者，退出时排空并 join。
+- 锁住消费者后填充异步缓冲，验证 ENOSPC 可见、关闭返回失败；再次打开无残留并保留最后一条日志。
+- 使用文件大小限制制造工作线程写入失败，验证排空/关闭将 EIO 返回给调用方。
+- simulator_cli：未指定 log_path 时连续启动两次，验证时间命名、文件不重名及 CAN 初始化失败日志已在退出前落入文件。
+- 28 个双进程场景及两版真实时间回归继续检查最终证据，覆盖文件启用/关闭。
+
+Zephyr 的异步工作线程与文件后端当前仍返回 ENOSYS，骨架构建不代表具备日志线程运行能力。
