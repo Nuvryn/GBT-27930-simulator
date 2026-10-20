@@ -1,5 +1,5 @@
 #!/bin/bash
-# build-armhf.sh - cross-compile the scaffold demo for ARM (hard-float).
+# build-armhf.sh - cross-compile the simulator for ARM (hard-float).
 # Usage:
 #   ./scripts/build-armhf.sh           # incremental build
 #   ./scripts/build-armhf.sh clean     # wipe the build dir and reconfigure
@@ -11,7 +11,7 @@ cd "$(dirname "$0")/.."
 BUILD=build-armhf
 TOOLCHAIN=cmake/toolchains/arm-linux-gnueabihf.cmake
 EXPECTED_CC=arm-linux-gnueabihf-gcc
-BIN=$BUILD/scaffold_demo
+BIN=$BUILD/gbt27930_simulator
 
 case "${1:-build}" in
     clean)
@@ -40,7 +40,7 @@ esac
 # Configure only when the build dir is missing or cached a different compiler.
 NEEDS_CONFIG=true
 if [ -f "$BUILD/CMakeCache.txt" ]; then
-    CACHED_CC=$(grep "^CMAKE_C_COMPILER:FILEPATH=" "$BUILD/CMakeCache.txt" | cut -d= -f2-)
+    CACHED_CC=$(grep "^CMAKE_C_COMPILER:[A-Z]*=" "$BUILD/CMakeCache.txt" | cut -d= -f2-)
     if [[ "$CACHED_CC" == *"$EXPECTED_CC"* ]]; then
         NEEDS_CONFIG=false
         echo "[skip] $BUILD already configured with $CACHED_CC"

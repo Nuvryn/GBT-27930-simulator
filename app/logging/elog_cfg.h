@@ -1,6 +1,6 @@
 /** @file elog_cfg.h @brief Project-owned EasyLogger configuration, synchronous output. */
-#ifndef LOGGING_ELOG_CFG_H
-#define LOGGING_ELOG_CFG_H
+#ifndef APP_LOGGING_ELOG_CFG_H
+#define APP_LOGGING_ELOG_CFG_H
 #define ELOG_OUTPUT_ENABLE
 #define ELOG_OUTPUT_LVL 5
 #define ELOG_LINE_BUF_SIZE 2048

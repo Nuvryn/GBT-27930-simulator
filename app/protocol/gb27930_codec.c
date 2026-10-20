@@ -310,11 +310,11 @@ int gb27930_encode(gb27930_message_t message, unsigned version, const gb27930_va
     {
         for (size_t idx = 0u; idx < values->cell_count; idx++)
         {
-            if (values->cells_mv[idx] > 24000u || values->cells_mv[idx] % 10u != 0u)
+            if (values->cells_mv[idx] > 24000u || values->cells_mv[idx] % 10u != 0u || values->cell_groups[idx] > 15u)
             {
                 return -ERANGE;
             }
-            gb27930_put(out_data, (uint16_t) (idx * 16u), 16u, values->cells_mv[idx] / 10u);
+            gb27930_put(out_data, (uint16_t) (idx * 16u), 16u, (uint32_t) (values->cells_mv[idx] / 10u) | ((uint32_t) values->cell_groups[idx] << 12u));
         }
     }
     if (message == GB27930_BMT)
@@ -433,6 +433,7 @@ int gb27930_decode(gb27930_message_t message, unsigned version, const uint8_t *d
                 return -EBADMSG;
             }
             decoded.cells_mv[idx] = (uint16_t) (raw * 10u);
+            decoded.cell_groups[idx] = (uint8_t) gb27930_bits(data, (uint16_t) (idx * 16u + 12u), 4u);
         }
     }
     if (message == GB27930_BMT)

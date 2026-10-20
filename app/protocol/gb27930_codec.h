@@ -1,8 +1,8 @@
 /** @file gb27930_codec.h
  * @brief Explicit little-endian GB/T 27930 application payloads; no platform types.
  */
-#ifndef PROTOCOL_GB27930_CODEC_H
-#define PROTOCOL_GB27930_CODEC_H
+#ifndef APP_PROTOCOL_GB27930_CODEC_H
+#define APP_PROTOCOL_GB27930_CODEC_H
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -62,6 +62,7 @@ typedef struct
     int64_t field[GB27930_FIELD_CAPACITY];
     bool available[GB27930_FIELD_CAPACITY];
     uint16_t cells_mv[256];
+    uint8_t cell_groups[256];
     size_t cell_count;
     int16_t temperatures_degc[128];
     size_t temperature_count;

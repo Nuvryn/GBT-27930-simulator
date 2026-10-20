@@ -417,6 +417,20 @@ static bool sim_config_arrays(const cJSON *item, sim_config_t *config)
     }
     int count = cJSON_GetArraySize(item);
     size_t idx = 0u;
+    if (strcmp(item->string, "cell_group") == 0 && count > 0 && count <= 256)
+    {
+        config->cell_group_count = (size_t) count;
+        for (const cJSON *entry = item->child; entry != NULL; entry = entry->next)
+        {
+            int64_t value;
+            if (!sim_config_integer(entry, 0, 15, &value))
+            {
+                return false;
+            }
+            config->values.cell_groups[idx++] = (uint8_t) value;
+        }
+        return true;
+    }
     if (strcmp(item->string, "cell_voltage_mv") == 0 && count > 0 && count <= 256)
     {
         config->values.cell_count = (size_t) count;
@@ -539,7 +553,7 @@ int sim_config_parse(const char *text, sim_config_t *out_config, char *out_error
                 }
             }
         }
-        else if (strcmp(key, "cell_voltage_mv") == 0 || strcmp(key, "temperature_degc") == 0 || strcmp(key, "reserved_bytes") == 0 || strcmp(key, "software_bytes") == 0)
+        else if (strcmp(key, "cell_voltage_mv") == 0 || strcmp(key, "temperature_degc") == 0 || strcmp(key, "reserved_bytes") == 0 || strcmp(key, "software_bytes") == 0 || strcmp(key, "cell_group") == 0)
         {
             valid = sim_config_arrays(item, &config);
         }
@@ -575,6 +589,10 @@ int sim_config_parse(const char *text, sim_config_t *out_config, char *out_error
         rc = sim_config_error(out_error, error_capacity, "cross-field constraints");
     }
     cJSON_Delete(root);
+    if (rc == 0 && config.cell_group_count != 0u && config.cell_group_count != config.values.cell_count)
+    {
+        rc = sim_config_error(out_error, error_capacity, "cell_group length");
+    }
     if (rc == 0)
     {
         *out_config = config;

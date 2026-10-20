@@ -1,8 +1,8 @@
 /** @file sim_config.h
  * @brief Validated startup configuration. Times are protocol milliseconds.
  */
-#ifndef CONFIG_SIM_CONFIG_H
-#define CONFIG_SIM_CONFIG_H
+#ifndef APP_CONFIG_SIM_CONFIG_H
+#define APP_CONFIG_SIM_CONFIG_H
 #include "protocol/gb27930_codec.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -71,6 +71,7 @@ typedef struct
     uint32_t first_timeout_ms[GB27930_MESSAGE_COUNT];
     bool enabled[GB27930_MESSAGE_COUNT];
     gb27930_values_t values;
+    size_t cell_group_count;
     sim_fault_rule_t faults[SIM_CONFIG_RULE_CAPACITY];
     size_t fault_count;
     sim_event_t events[SIM_CONFIG_EVENT_CAPACITY];

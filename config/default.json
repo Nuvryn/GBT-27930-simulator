@@ -1,4 +1,12 @@
 {
-    "demo": true,
-    "note": "scaffold default config - replace with your project's schema"
+  "role": "charger",
+  "version": 2015,
+  "can_interface": "can0",
+  "stop_after_ms": 5000,
+  "parameters": {
+    "cml_max_voltage_mv": 750000,
+    "cml_min_voltage_mv": 200000,
+    "cml_max_current_ma": 200000,
+    "cml_min_current_ma": 0
+  }
 }

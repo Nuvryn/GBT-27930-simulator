@@ -113,11 +113,17 @@ target_include_directories(easylogger SYSTEM PUBLIC ${ROOT}/third_party/easylogg
 target_include_directories(easylogger PUBLIC ${ROOT}/app/logging)
 target_sources(scaffold_support PRIVATE backends/support/${PLATFORM}/log_sink.c)
 add_library(sim_core STATIC app/protocol/gb27930_codec.c app/config/sim_config.c
-    app/logging/sim_log.c app/transport/j1939_tp.c)
+    app/logging/sim_log.c app/transport/j1939_tp.c app/fault_injection/sim_fault.c app/simulator/sim_engine.c)
 target_include_directories(sim_core PUBLIC ${ROOT}/app)
 target_link_libraries(sim_core PUBLIC scaffold_support opensaej1939 cjson easylogger)
 target_compile_options(sim_core PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion -Wstrict-prototypes)
 
+add_executable(gbt27930_simulator app/simulator/sim_main.c)
+target_link_libraries(gbt27930_simulator PRIVATE sim_core)
+target_compile_options(gbt27930_simulator PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion)
+if(PLATFORM STREQUAL "zephyr")
+    target_compile_definitions(gbt27930_simulator PRIVATE PLATFORM_ZEPHYR)
+endif()
 
 # ---------------------------------------------------------------------------
 # Demo application (replace app/ with your own; keep it free of #ifdef PLATFORM
@@ -134,6 +140,16 @@ endif()
 # Check integration without requiring a physical CAN controller.
 include(CTest)
 if(BUILD_TESTING AND PLATFORM STREQUAL "linux")
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    add_executable(test_sim_fault tests/test_sim_fault.c)
+    target_link_libraries(test_sim_fault PRIVATE sim_core)
+    add_test(NAME sim_fault COMMAND test_sim_fault)
+    add_executable(test_sim_engine tests/test_sim_engine.c)
+    target_link_libraries(test_sim_engine PRIVATE sim_core)
+    add_test(NAME sim_engine COMMAND test_sim_engine)
+    add_test(NAME simulator_cli COMMAND ${Python3_EXECUTABLE} ${ROOT}/tests/test_simulator_cli.py $<TARGET_FILE:gbt27930_simulator>)
+    add_test(NAME simulator_scenarios COMMAND ${Python3_EXECUTABLE} ${ROOT}/tests/run_scenarios.py --build-dir ${CMAKE_BINARY_DIR})
+    set_tests_properties(simulator_scenarios PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 90 RESOURCE_LOCK vcan0)
     add_executable(test_sim_core tests/test_sim_core.c)
     target_link_libraries(test_sim_core PRIVATE sim_core)
     add_test(NAME sim_core COMMAND test_sim_core)

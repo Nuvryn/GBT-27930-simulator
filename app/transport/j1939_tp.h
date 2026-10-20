@@ -2,8 +2,8 @@
  * @brief Bounded CMDT adapter around Open-SAE-J1939. One peer per instance.
  * @note Single-thread only. Calls across instances must never be nested.
  */
-#ifndef TRANSPORT_J1939_TP_H
-#define TRANSPORT_J1939_TP_H
+#ifndef APP_TRANSPORT_J1939_TP_H
+#define APP_TRANSPORT_J1939_TP_H
 #include "common/sim_frame.h"
 #include <stdbool.h>
 #include <stddef.h>

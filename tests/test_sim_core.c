@@ -148,6 +148,12 @@ static int test_codec(void)
     TEST_CHECK(gb27930_decode(GB27930_CTS, 2015u, data, len, &decoded) == -EBADMSG);
     TEST_CHECK(gb27930_set(&values, "bro_ready", 1) == -ERANGE);
     TEST_CHECK(gb27930_set(&values, "battery_type", 17) == -ERANGE);
+    values.cell_count = 1u;
+    values.cells_mv[0] = 3650u;
+    values.cell_groups[0] = 3u;
+    TEST_CHECK(gb27930_encode(GB27930_BMV, 2015u, &values, data, sizeof(data), &len) == 0);
+    TEST_CHECK(len == 2u && data[0] == 0x6Du && data[1] == 0x31u);
+    TEST_CHECK(gb27930_decode(GB27930_BMV, 2015u, data, len, &decoded) == 0 && decoded.cell_groups[0] == 3u && decoded.cells_mv[0] == 3650u);
     return 0;
 }
 /** T1/T2/T4, short frames, session collision, early ACK and real send failures. */
@@ -193,6 +199,8 @@ static int test_config(void)
     sim_config_t config;
     char error[256];
     TEST_CHECK(sim_config_parse("{\"role\":\"bms\",\"version\":2015}", &config, error, sizeof(error)) == 0 && config.source == 0xF4u);
+    TEST_CHECK(sim_config_parse("{\"role\":\"bms\",\"version\":2015,\"cell_group\":[3],\"cell_voltage_mv\":[3650]}", &config, error, sizeof(error)) == 0 && config.values.cell_groups[0] == 3u);
+    TEST_CHECK(sim_config_parse("{\"role\":\"bms\",\"version\":2015,\"cell_group\":[3,4],\"cell_voltage_mv\":[3650]}", &config, error, sizeof(error)) != 0);
     const char *bad[] = {"{}", "{\"role\":\"bms\",\"role\":\"charger\",\"version\":2015}",
         "{\"role\":\"bms\",\"version\":2015,\"speed\":10}", "{\"role\":\"bms\",\"version\":2022}",
         "{\"role\":\"bms\",\"version\":2015,\"unknown\":1}", "{\"role\":\"bms\",\"version\":2015,\"file_log\":true}"};

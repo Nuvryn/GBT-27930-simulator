@@ -1,6 +1,6 @@
 /** @file sim_log.h @brief Protocol-thread logging wrapper over EasyLogger. */
-#ifndef LOGGING_SIM_LOG_H
-#define LOGGING_SIM_LOG_H
+#ifndef APP_LOGGING_SIM_LOG_H
+#define APP_LOGGING_SIM_LOG_H
 #include "common/sim_frame.h"
 #include <stdbool.h>
 #include <stdint.h>
