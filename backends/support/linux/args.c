@@ -26,6 +26,7 @@
 #include <stddef.h> /* NULL */
 #include <stdlib.h> /* strtoul */
 #include <string.h>
+#include <errno.h>
 
 #define HOST_DEFAULT_CONFIG "config/default.json"
 
@@ -33,7 +34,7 @@ static void print_usage(const char *prog)
 {
     console_printf("Usage: %s [OPTIONS]\n", prog);
     console_printf("\n");
-    console_printf("Platform Scaffold Demo\n");
+    console_printf("GB/T 27930 CAN protocol simulator\n");
     console_printf("\n");
     console_printf("Options:\n");
     console_printf("  --config <file>   Path to configuration file\n");
@@ -56,7 +57,7 @@ int args_parse(args_t *out, int argc, char **argv)
 
     /* Defaults: default config file; speed=0 = use the configured value */
     out->config_src = HOST_DEFAULT_CONFIG;
-    out->speed      = 0;
+    out->speed = 0;
 
     if (argc > 0 && argv != NULL)
     {
@@ -73,7 +74,16 @@ int args_parse(args_t *out, int argc, char **argv)
             }
             else if (strcmp(argv[i], "--speed") == 0 && i + 1 < argc)
             {
-                out->speed = (unsigned)strtoul(argv[++i], NULL, 10);
+                const char *text = argv[++i];
+                char *end = NULL;
+                errno = 0;
+                unsigned long speed = strtoul(text, &end, 10);
+                if (errno != 0 || text[0] < '0' || text[0] > '9' || end == text || *end != '\0' || speed < 1ul || speed > 100ul)
+                {
+                    console_printf("Invalid --speed: expected integer 1..100\n");
+                    return -1;
+                }
+                out->speed = (unsigned) speed;
             }
             else
             {

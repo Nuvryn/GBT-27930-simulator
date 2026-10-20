@@ -104,6 +104,21 @@ endforeach()
 # Vendored, pinned upstream library plus the platform-contract adapter.
 include(cmake/open_sae_j1939.cmake)
 
+add_library(cjson STATIC third_party/cjson/cJSON.c)
+target_compile_definitions(cjson PRIVATE CJSON_NESTING_LIMIT=32)
+target_include_directories(cjson SYSTEM PUBLIC ${ROOT}/third_party/cjson)
+target_link_libraries(cjson PUBLIC m)
+add_library(easylogger STATIC third_party/easylogger/src/elog.c third_party/easylogger/src/elog_utils.c)
+target_include_directories(easylogger SYSTEM PUBLIC ${ROOT}/third_party/easylogger/inc)
+target_include_directories(easylogger PUBLIC ${ROOT}/app/logging)
+target_sources(scaffold_support PRIVATE backends/support/${PLATFORM}/log_sink.c)
+add_library(sim_core STATIC app/protocol/gb27930_codec.c app/config/sim_config.c
+    app/logging/sim_log.c app/transport/j1939_tp.c)
+target_include_directories(sim_core PUBLIC ${ROOT}/app)
+target_link_libraries(sim_core PUBLIC scaffold_support opensaej1939 cjson easylogger)
+target_compile_options(sim_core PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion -Wstrict-prototypes)
+
+
 # ---------------------------------------------------------------------------
 # Demo application (replace app/ with your own; keep it free of #ifdef PLATFORM
 # except the entry-point signature, which the support layer cannot abstract).
@@ -119,6 +134,9 @@ endif()
 # Check integration without requiring a physical CAN controller.
 include(CTest)
 if(BUILD_TESTING AND PLATFORM STREQUAL "linux")
+    add_executable(test_sim_core tests/test_sim_core.c)
+    target_link_libraries(test_sim_core PRIVATE sim_core)
+    add_test(NAME sim_core COMMAND test_sim_core)
     add_executable(test_open_sae_j1939_eom
         third_party/open_sae_j1939/tests/transport_eom.c)
     target_link_libraries(test_open_sae_j1939_eom PRIVATE opensaej1939)
@@ -130,7 +148,7 @@ if(BUILD_TESTING AND PLATFORM STREQUAL "linux")
     target_compile_options(test_open_sae_j1939_port PRIVATE
         -Wall -Wextra -Werror -Wconversion -Wsign-conversion)
     add_test(NAME open_sae_j1939_port COMMAND test_open_sae_j1939_port)
-    set_tests_properties(open_sae_j1939_port PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 10)
+    set_tests_properties(open_sae_j1939_port PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 10 RESOURCE_LOCK vcan0)
     add_test(NAME open_sae_j1939_send_failure COMMAND test_open_sae_j1939_port --closed-bus)
     set_tests_properties(open_sae_j1939_send_failure PROPERTIES TIMEOUT 10)
 
@@ -138,7 +156,7 @@ if(BUILD_TESTING AND PLATFORM STREQUAL "linux")
     target_link_libraries(test_can_hal PRIVATE scaffold_support)
     target_compile_options(test_can_hal PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion)
     add_test(NAME can_hal COMMAND test_can_hal)
-    set_tests_properties(can_hal PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 10)
+    set_tests_properties(can_hal PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 10 RESOURCE_LOCK vcan0)
     add_test(NAME platform_demo COMMAND scaffold_demo)
     set_tests_properties(platform_demo PROPERTIES WORKING_DIRECTORY "${ROOT}")
     add_test(NAME config_missing COMMAND scaffold_demo --config "${ROOT}/config/missing.json")

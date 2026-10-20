@@ -20,6 +20,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 int config_source_load(config_source_t *out, const char *src)
 {
@@ -36,7 +37,7 @@ int config_source_load(config_source_t *out, const char *src)
         return -1;
     }
     long len = ftell(fp);
-    if (len <= 0)
+    if (len <= 0 || len > 65536L)
     {
         fclose(fp);
         return -1;
@@ -56,7 +57,7 @@ int config_source_load(config_source_t *out, const char *src)
 
     size_t nread = fread(data, 1, (size_t) len, fp);
     fclose(fp);
-    if (nread < (size_t) len)
+    if (nread < (size_t) len || memchr(data, '\0', nread) != NULL)
     {
         free(data);
         return -1;
