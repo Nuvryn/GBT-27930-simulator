@@ -101,6 +101,9 @@ foreach(platform_target scaffold_osal scaffold_hal scaffold_support)
     target_compile_options(${platform_target} PRIVATE -Wall -Wextra)
 endforeach()
 
+# Vendored, pinned upstream library plus the platform-contract adapter.
+include(cmake/open_sae_j1939.cmake)
+
 # ---------------------------------------------------------------------------
 # Demo application (replace app/ with your own; keep it free of #ifdef PLATFORM
 # except the entry-point signature, which the support layer cannot abstract).
@@ -116,6 +119,21 @@ endif()
 # Check integration without requiring a physical CAN controller.
 include(CTest)
 if(BUILD_TESTING AND PLATFORM STREQUAL "linux")
+    add_executable(test_open_sae_j1939_eom
+        third_party/open_sae_j1939/tests/transport_eom.c)
+    target_link_libraries(test_open_sae_j1939_eom PRIVATE opensaej1939)
+    add_test(NAME open_sae_j1939_eom COMMAND test_open_sae_j1939_eom)
+    set_tests_properties(open_sae_j1939_eom PROPERTIES TIMEOUT 10)
+
+    add_executable(test_open_sae_j1939_port tests/test_open_sae_j1939_port.c)
+    target_link_libraries(test_open_sae_j1939_port PRIVATE open_sae_j1939_port)
+    target_compile_options(test_open_sae_j1939_port PRIVATE
+        -Wall -Wextra -Werror -Wconversion -Wsign-conversion)
+    add_test(NAME open_sae_j1939_port COMMAND test_open_sae_j1939_port)
+    set_tests_properties(open_sae_j1939_port PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 10)
+    add_test(NAME open_sae_j1939_send_failure COMMAND test_open_sae_j1939_port --closed-bus)
+    set_tests_properties(open_sae_j1939_send_failure PROPERTIES TIMEOUT 10)
+
     add_executable(test_can_hal tests/test_can_hal.c)
     target_link_libraries(test_can_hal PRIVATE scaffold_support)
     target_compile_options(test_can_hal PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion)

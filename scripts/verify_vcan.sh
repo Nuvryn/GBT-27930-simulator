@@ -7,3 +7,4 @@ if ! ip link show vcan0 >/dev/null 2>&1; then
 fi
 ip link set vcan0 up
 ./build/test_can_hal
+./build/test_open_sae_j1939_port

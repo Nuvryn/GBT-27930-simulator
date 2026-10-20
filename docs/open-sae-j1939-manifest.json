@@ -1,0 +1,240 @@
+{
+  "repository": "https://github.com/DanielMartensson/Open-SAE-J1939",
+  "commit": "2a890c58c6a199d6a6ef793b71bac3c53f594823",
+  "imported_on": "2026-10-20",
+  "normalization": "CRLF to LF only",
+  "files": [
+    {
+      "path": "CMakeLists.txt",
+      "sha256_lf": "e22d8309f45fb520c3e2b26d6ff8ad4a4cf646142cf77681909493eddd9a9204"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-71_Application_Layer/Request_ECU_Identification.c",
+      "sha256_lf": "abcf885502b09c281ef47d02dda7aee064b7c57ef5d51768c11f714f9e60ca6d"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-71_Application_Layer/Request_Proprietary_B.c",
+      "sha256_lf": "0226131fdad99cfe7603c7ed4af087f463566d18d2b84fec33885e8b12b6a535"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-71_Application_Layer/Request_Proprietary.c",
+      "sha256_lf": "9cf36532ed3326edd4d9e8eee15baac4ffca3499ac8298710ed185ed5138d111"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-71_Application_Layer/Request_Software_Identification.c",
+      "sha256_lf": "637e1cefa2ec7d9a365688d175bd49dcfcb1908cfe168e8877bf96b29fa819a7"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-73_Diagnostics_Layer/Diagnostics_Layer.h",
+      "sha256_lf": "b4093d6269b13a38e85866af7cdb965118006938223b15e243f23ea44e14d9b1"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-73_Diagnostics_Layer/DM1.c",
+      "sha256_lf": "56241f9ba94f89c72a1cd4689114cb38b78046a106a8499da8faa107128bffb3"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-73_Diagnostics_Layer/DM14.c",
+      "sha256_lf": "5063ab3b244a670aa33a51728928f31de37bb0168d8e384e7c4a904a2dab16ce"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-73_Diagnostics_Layer/DM15.c",
+      "sha256_lf": "3d437b58558414eb001ba2c337a5f9ad1be070592cad120a670bf37eaa824f46"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-73_Diagnostics_Layer/DM16.c",
+      "sha256_lf": "a7485e94c434dd7bbe6bf2262a1e1baed48417fe134326b2d42c06970ca6b098"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-73_Diagnostics_Layer/DM2.c",
+      "sha256_lf": "6b74ada41c6e08df90d3096d7119b5f9ce4ce3bdd5755b1728070a414faadaab"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-73_Diagnostics_Layer/DM3.c",
+      "sha256_lf": "659980b9838df39a266989be650eb15d38886c6afd98ebb824ba4854c56c9e6b"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-81_Network_Management_Layer/Address_Claimed.c",
+      "sha256_lf": "be8e890efd956993a70ac63f0695de1f811f1548cc491ede653cb208bd74dd96"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-81_Network_Management_Layer/Address_Delete.c",
+      "sha256_lf": "4430d0d94348d55df6022ad42f1a0607033d0b402bdd3c919c8514b2487a7a75"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-81_Network_Management_Layer/Address_Not_Claimed.c",
+      "sha256_lf": "90c8519f39f44ff90ba3b3368c04cfa9dd21f866def71abc126bfe5688e84d79"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-81_Network_Management_Layer/Commanded_Address.c",
+      "sha256_lf": "13875b39fc34ac6414ae821d3fc4b06f693b9a764d2a1ca3ce30b45d69ab2288"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-81_Network_Management_Layer/Network_Management_Layer.h",
+      "sha256_lf": "3f591372f56a21020174bbf0a9799b23e4b0a0cf3f2eb180a1fae2094cfba587"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939_Enums/Enum_Abort_Reason.h",
+      "sha256_lf": "964eebf977a9ee3765ef6ead7a11ee89d5dd1c792cded89c2e7bd87587f2039c"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939_Enums/Enum_Abort_Sender.h",
+      "sha256_lf": "afa655f82a5529e84bdc8f963ae6618230d02be48bb6765fb7a7ac501cd82825"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939_Enums/Enum_Control_Byte.h",
+      "sha256_lf": "1b295bec691b507e9ce58378a29bb68051e8a2cb2726cbbb99370b2c4df07221"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939_Enums/Enum_DM1_DM2.h",
+      "sha256_lf": "8280bef9cf97746ccb02826568ac0571b7faa99e3aeaab29e23b7074e3c82b5f"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939_Enums/Enum_DM14_DM15.h",
+      "sha256_lf": "b9ff8a263dc89f7ebc316afc73673a546ffbad6c604eadcaa85fdacebc4249c2"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939_Enums/Enum_Group_Function_Value.h",
+      "sha256_lf": "0edc81d2ca8f3acbb5a12f4890e328ef2deebe68da97c11a3977891c350d9635"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939_Enums/Enum_NAME.h",
+      "sha256_lf": "f07ee6580d53f19d4b9c10ce210b24e78cd27397b6c3a959f80237e9a5dff261"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939_Enums/Enum_PGN.h",
+      "sha256_lf": "0c6a3f407937115ed1cdbead9202c5a033a45b6537a9af21ce1ba1773951e78c"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939_Enums/Enum_Send_Status.h",
+      "sha256_lf": "1b83a8c77620d515b2c5b753d303a1debf3171cbdb400cbfed7e264d58b82101"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-71_Application_Layer/Request_Component_Identification.c",
+      "sha256_lf": "2b2f22a579600dc15466deea6a6fc5c7df2c4a46f43d7701f44f0597414f595c"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-71_Application_Layer/Application_Layer.h",
+      "sha256_lf": "6d098112c7185191334bf706de497fcfab28765dd838bbdc485ddfa10e6670dc"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-71_Application_Layer/Application_Layer.c",
+      "sha256_lf": "7f5b50612937e645cf1e7cb92b2d031c5d790b389b0c2f532e85f4c894f46cf9"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-21_Transport_Layer/Transport_Protocol_Data_Transfer.c",
+      "sha256_lf": "1134a9d7d91b7745e61c685a8ca5180602923275dc2822e7321763ee9b5c531b"
+    },
+    {
+      "path": "LICENSE",
+      "sha256_lf": "8281038180939999e70d42fb111a8fac592d74196785aa764a95ab663451c2a6"
+    },
+    {
+      "path": "README.md",
+      "sha256_lf": "1943d2d34a1e93b4975a8ce790ff66e88bf2aa02426eb2c61e8c7f792eb987c1"
+    },
+    {
+      "path": "Src/Main.c",
+      "sha256_lf": "3e4e507be949fbfb13393f093b65d7fede9111f45950a7516ae3b44a2b9f92cf"
+    },
+    {
+      "path": "Src/Hardware/CAN_Transmit_Receive.c",
+      "sha256_lf": "c37973d5b0f5ffc4774b2d0b45ea82c05888abddc247c0a5d69396937e2a2981"
+    },
+    {
+      "path": "Src/Hardware/FLASH_EEPROM_RAM_Memory.c",
+      "sha256_lf": "9422b548e5e9286d42aba3bd47c238e3a043f2d684e5207753d3c6fb823eba1c"
+    },
+    {
+      "path": "Src/Hardware/Hardware.h",
+      "sha256_lf": "20b7627f539d890a0b740919ed21a01565a4a0dcda30100b25994c096a90707b"
+    },
+    {
+      "path": "Src/Hardware/Save_Load_Struct.c",
+      "sha256_lf": "cf20c5f24f064c5d8d9e22d59ff0561fee5fffe72645cb234b4b9fc724217ef3"
+    },
+    {
+      "path": "Src/Hardware/SocketCAN_Transmit_Receive.c",
+      "sha256_lf": "8b9e9065df419ca6b32c466e204c2a8af16f0120785726028a5631c19a36c444"
+    },
+    {
+      "path": "Src/Hardware/SocketCAN.h",
+      "sha256_lf": "9fab871af0aaa4ef322e385623a6724fd57e17ecec7effdd1870872386b8ba1c"
+    },
+    {
+      "path": "Src/ISO_11783/ISO_11783-7_Application_Layer/Application_Layer.h",
+      "sha256_lf": "3b6d023be96821d6c69620b9cd09e5a49de37e663c0556f758844a8ac9a2e997"
+    },
+    {
+      "path": "Src/ISO_11783/ISO_11783-7_Application_Layer/Auxiliary_Valve_Command.c",
+      "sha256_lf": "83e93cdaf860ed135655c4889b4a25754038c924fd13315a4934ef87d23ea91f"
+    },
+    {
+      "path": "Src/ISO_11783/ISO_11783-7_Application_Layer/Auxiliary_Valve_Estimated_Flow.c",
+      "sha256_lf": "d87d062146c1558e98746675d8e8902fc6ce9874be97bb340c513ca33a9b5d81"
+    },
+    {
+      "path": "tests/CMakeLists.txt",
+      "sha256_lf": "11426788cb304de8bde7932e5974d5b6b05a3b33d13dae8e9864b2e5e319db12"
+    },
+    {
+      "path": "Src/ISO_11783/ISO_11783-7_Application_Layer/Auxiliary_Valve_Measured_Position.c",
+      "sha256_lf": "4b61f92540ac691bc057f9f51c93f1fd39aa32e4855aac36d4c5e7a37c473bd5"
+    },
+    {
+      "path": "Src/ISO_11783/ISO_11783-7_Application_Layer/General_Purpose_Valve_Estimated_Flow.c",
+      "sha256_lf": "7364e12f46dc06e129f044c4a3c56a076b5e5a5d2d863277aa5b3fd2512d7983"
+    },
+    {
+      "path": "Src/ISO_11783/ISO_11783_Enums/Enum_Valves.h",
+      "sha256_lf": "26d58343495c8e32c4e4e08537a4b3689f6a9adbf6b1f46a835b330fffcc265d"
+    },
+    {
+      "path": "Src/Open_SAE_J1939/C89_Library.h",
+      "sha256_lf": "1a6f16bc91f7e5bc6152f5d6653aecea42d25ef8221b41a2f0f4d209e974d82e"
+    },
+    {
+      "path": "Src/Open_SAE_J1939/Closedown_ECU.c",
+      "sha256_lf": "106549832e4dafca18851e3ab04fdb4af059a652e19dfd97abf8e0e1b61764b3"
+    },
+    {
+      "path": "Src/Open_SAE_J1939/Listen_For_Messages.c",
+      "sha256_lf": "9381656a3caafc97d80949689a27293c03c2d934be73fea4b8cbb457224f5434"
+    },
+    {
+      "path": "Src/Open_SAE_J1939/Open_SAE_J1939.h",
+      "sha256_lf": "f60e279fd022d3d1d76dd2bdbe1c01f75bde6c66ffa7912cc5e4d2ef7e418954"
+    },
+    {
+      "path": "Src/Open_SAE_J1939/Startup_ECU.c",
+      "sha256_lf": "745890afac10f9f9466f698942d220f0e119f6fe92aee513fc0ae832caa34137"
+    },
+    {
+      "path": "Src/Open_SAE_J1939/Structs.h",
+      "sha256_lf": "39deade7269652cc5a6d13d69564a46316faf7dc44050d532180d0dd4b257141"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-21_Transport_Layer/Acknowledgement.c",
+      "sha256_lf": "bec9cf31b09e3fa7fd0d240dd640729dbc373f714af3d63ed36ac7da8c5189fa"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-21_Transport_Layer/Request.c",
+      "sha256_lf": "036fc0a993b57b65af2b7feeb2a165562b3ca7fb36b364de70c044d2ff99c50d"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-21_Transport_Layer/Transport_Layer.h",
+      "sha256_lf": "f41af4a25f3f6835107100177f6beedb5a9b46107f2ed2c54b0f1c334f1ce241"
+    },
+    {
+      "path": "Src/SAE_J1939/SAE_J1939-21_Transport_Layer/Transport_Protocol_Connection_Management.c",
+      "sha256_lf": "1d41793cac9d96bfeb1a2f300199ad663b8a677fd880ac23ec09edbc0c63373a"
+    },
+    {
+      "path": "Src/ISO_11783/ISO_11783-7_Application_Layer/General_Purpose_Valve_Command.c",
+      "sha256_lf": "de68d08877bc330c8ea119dc213b569d544279515e1e700f9a1c709bbaf67f40"
+    },
+    {
+      "path": "tests/transport_eom.c",
+      "sha256_lf": "427486adf870d712d1181da7feb66a7b03d3d1cee0af323f2ae03319765c439f"
+    }
+  ]
+}
