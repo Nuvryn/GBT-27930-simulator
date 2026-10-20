@@ -2,7 +2,7 @@
   "role": "bms",
   "version": 2015,
   "file_log": true,
-  "candump": true,
+  "candump": false,
   "can_interface": "can0",
   "stop_after_ms": 0,
   "parameters": {

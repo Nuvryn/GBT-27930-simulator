@@ -70,7 +70,7 @@ void sim_config_defaults(sim_config_t *out_config)
     out_config->peer = 0xF4u;
     out_config->speed = 1u;
     out_config->file_log = true;
-    out_config->candump = true;
+    out_config->candump = false;
     memcpy(out_config->can_interface, "can0", 5u);
     out_config->self_test_pass = true;
     out_config->parameters_match = true;

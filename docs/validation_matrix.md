@@ -6,7 +6,7 @@
 
 | 检查 | 结果 | 证据/复现入口 |
 |---|---|---|
-| Linux 严格告警构建与 14 项 CTest | PASS | `scripts/verify_simulator.sh --prepare-vcan`；`build/Testing/Temporary/LastTest.log` |
+| Linux 严格告警构建与 13 项 CTest | PASS | `scripts/verify_simulator.sh --prepare-vcan`；`build/Testing/Temporary/LastTest.log` |
 | 2015、2023 双角色正常充电及双方主动结束 | PASS | 四个 normal 场景及独立可控时间引擎测试 |
 | 真实时间双角色正常充电 | PASS | `scripts/verify_real_time.sh`；`report_real_time_2015.json` / `report_real_time_2023.json` |
 | DT 最小 10 ms 与 BCL/CCS 50 ms 调度 | PASS | 独立 TP 可控时间检查、真实时间日志间隔；后者允许至 100 ms 用于本机回归 |
@@ -89,8 +89,8 @@ BRM 使用资料勘误后的 49 字节；资料称 23 种报文，但逐项仅�
 
 Zephyr 的异步工作线程与文件后端当前仍返回 ENOSYS，骨架构建不代表具备日志线程运行能力。
 
-## candump 与易读视图
+## 可选 candump 抓包
 
-29 个双进程场景中的 28 个默认启用抓包，核对每个角色实际成功 TX 的 ID、数据及次数均出现在对应原始文件中；另有关闭抓包的独立场景。两版真实时间正常场景同样检查原始帧覆盖。
+29 个双进程场景中的 28 个通过测试配置显式启用抓包，核对每个角色实际成功 TX 的 ID、数据及次数均出现在对应原始文件中；另有关闭抓包的独立场景。产品默认关闭抓包。两版真实时间正常场景同样检查原始帧覆盖。
 
-can_capture 使用独立替身进程检查：工具缺失、非法接口参数、启动后退出、stderr 诊断、已有文件保护、正常停止、停止超时强制回收、丢帧诊断、文件写入失败及无残留子进程。can_capture_reader 用独立向量验证时间间隔、地址角色、TP 控制、物理单位和 HTML 转义。上述替身测试不替代使用真实 candump 的 vcan 回归。
+can_capture 使用独立替身进程检查：工具缺失、非法接口参数、启动后退出、stderr 诊断、已有文件保护、正常停止、停止超时强制回收、丢帧诊断、文件写入失败及无残留子进程。上述替身测试不替代使用真实 candump 的 vcan 回归。

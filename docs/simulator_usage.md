@@ -18,7 +18,7 @@
 | `source` / `peer` | 桩 86/244；BMS 244/86 | 0..253，不能相同 |
 | `software_test` / `speed` | false / 1 | 加速仅用于双方受控软件回归，速度 1..100 |
 | `file_log` / `log_path` | true / 空 | 默认生成 logs/YYYYMMDD_HHMMSS_纳秒_PID.log，使用平台本地时间；显式路径最多 255 字节并保留覆盖行为；false 关闭文件保存 |
-| `candump` / `candump_path` | true / 空 | 同步启动外部 candump；空路径默认关联应用日志，文件保存关闭时自行按真实时间命名；显式路径最多 255 字节，已有文件拒绝覆盖 |
+| `candump` / `candump_path` | false / 空 | 显式启用后启动外部 candump；空路径关联应用日志，文件日志关闭时自行按真实时间命名；显式路径最多 255 字节，已有文件拒绝覆盖 |
 | `self_test_pass` | true | 自检结果；false 进入故障处理 |
 | `parameters_match` | true | 场景给出的参数匹配条件，同时仍校验收到的电压与能力范围 |
 | `precharge_pass` | true | 预充结果；false 不进入正常充电 |
@@ -117,7 +117,7 @@
 
 正常完成输出 `RESULT status=PASS` 并退出 0；任何一次协议故障会保留本次进程的失败结果，即使后来成功重连并完成统计。异步写入在最后排空时失败也会令进程退出非零，工作线程另输出带错误码的 FAIL 诊断。场景报告的 PASS 表示观察到了预期结果，因此有意丢包的场景可以在模拟器退出 1 时判为 PASS。
 
-### 原始抓包与易读视图
+### 可选原始抓包
 
 Linux 使用 `posix_spawnp` 直接启动 `candump -L -d <接口>,0:0,#FFFFFFFF`，不通过 shell。捕获同一接口上的全部数据帧及错误帧，不限于当前角色。底层抓到的是实际总线数据，包括错误注入后的帧；软件丢弃而未发送的报文不会出现在总线上。外部工具来源为 [linux-can/can-utils](https://github.com/linux-can/can-utils)，部署时需将匹配目标架构的 `candump` 放入 PATH。WSL 验证使用发行版 can-utils 2020.11.0-1。
 
@@ -127,8 +127,14 @@ Linux 使用 `posix_spawnp` 直接启动 `candump -L -d <接口>,0:0,#FFFFFFFF`�
 
 启动前保留 100 ms 真实时间用于观察早期错误；结束后保留 100 ms 让工具接收最后的内核回环帧，再发送 SIGINT、排空管道、等待子进程退出。工具没有就绪握手，这些宽限不能证明任意负载下零丢帧。退出不响应时升级 SIGKILL 并报告失败。缺少工具、提前退出、stderr/丢帧诊断、写文件失败或停止超时均使本次进程退出非零；关闭 candump 不影响普通协议运行。SIGKILL 杀死模拟器或系统掉电不保证抓包子进程清理和日志完整性。
 
-易读视图使用 `python3 scripts/read_can_capture.py <原始文件>` 离线生成。字段位置与单位读取工程现有 codec 注册表，额外展示 TP.CM 类型和 TP.DT 包序号；不重写传输栈、不重组 TP 负载、不代替一致性判定。自定义源地址时使用 `--charger-address 0x56 --bms-address 0xF4`。原始未知行、标准帧和错误帧保留供人工核对。模拟器在 ARM 上运行无需 Python，转换视图可以在开发 PC 上执行。
+默认和示例配置均关闭抓包，不依赖 candump。Linux 按需配置：
 
-自动场景为每个角色生成原始文件、HTML、文本视图，并将成功发送帧与 candump 内容按 ID/字节/次数核对，包含最后的统计帧。报告中的 readable_captures 指向易读 HTML。
+```json
+{"role":"charger", "version":2015, "can_interface":"can0", "candump":true}
+```
+
+未来 MCU/Zephyr 移植可保持 `candump=false`，并按需设置 `file_log=false`；不要求实现文件保存。当前 Zephyr 仍只是骨架：外部抓包启动返回 ENOSYS，日志线程也尚未完成移植。若显式启用不支持的功能，应明确失败。
+
+自动场景显式启用抓包并核对成功发送帧的 ID/字节/次数，包含最后的统计帧；另保留关闭抓包的用例。目标端无需 Python 或协议源码，抓包仅保存 candump 原始格式及诊断信息。
 
 自动运行器独立检查双方退出码、日志证据和正常状态顺序；不读取引擎内部状态。输出包含 PASS/FAIL/SKIP、错误说明、退出码和证据目录。支持 `--case <名称>`、`--build-dir <路径>`、`--real-time`。真实时间正常用例检查 DT 至少 10 ms、BCL/CCS 周期 50..100 ms；100 ms 上界用于暴露本机调度迟滞，不作为标准允许偏差。

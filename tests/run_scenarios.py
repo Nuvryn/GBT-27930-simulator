@@ -122,7 +122,7 @@ def run_case(case, binary, directory, speed):
             config = dict(role=role, version=case["version"], can_interface="vcan0", software_test=True,
                           speed=speed, stop_after_ms=2000 if role == "charger" else 0,
                           max_session_ms=12000, retries=0, recovery_wait_ms=500,
-                          file_log=True, log_path=str(directory / f"{role}.events.log"),
+                          file_log=True, log_path=str(directory / f"{role}.events.log"), candump=True,
                           candump_path=str(directory / f"{role}.candump.log"))
             merge(config, case.get(role, {}))
             file_logs[role] = config["file_log"]
@@ -147,11 +147,6 @@ def run_case(case, binary, directory, speed):
             capture_path = directory / f"{role}.candump.log"
             if capture_enabled[role]:
                 capture = capture_path.read_text()
-                rendered = subprocess.run([sys.executable, str(ROOT / "scripts/read_can_capture.py"), str(capture_path)],
-                                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=5)
-                if rendered.returncode != 0:
-                    result["errors"].append(f"{role}: readable capture generation failed: {rendered.stdout}")
-                result.setdefault("readable_captures", {})[role] = str(capture_path) + ".readable.html"
                 raw_frames = Counter((identifier.upper(), payload.upper()) for identifier, payload in
                                      re.findall(r"^\(\d+\.\d+\)\s+vcan0\s+([0-9A-Fa-f]+)#([0-9A-Fa-f]*)$", capture, re.M))
                 tx_frames = Counter((identifier, payload.replace(" ", "")) for identifier, payload in

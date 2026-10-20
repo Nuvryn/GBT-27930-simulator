@@ -3,7 +3,7 @@
 通过 JSON 选择充电桩或 BMS，支持 2015 和 2023 A 类的握手、辨识、参数配置、准备、充电、中止、统计及异常恢复。每个进程模拟一个角色，通过 SocketCAN 对接。
 
 日志使用 EasyLogger 异步缓冲和独立输出线程，默认保存到 `logs/年月日_时分秒_纳秒_进程号.log`。使用平台本地时间；`file_log=false` 可关闭文件保存。
-默认同时运行 `candump` 保存原始 CAN 报文，Linux/ARM 设备需安装 `can-utils`；`candump=false` 可独立关闭。原始文件旁保存诊断文件，自动场景另外生成可搜索 HTML 和文本视图。
+`candump` 原始抓包由配置控制，默认关闭；Linux/ARM 按需设置 `"candump": true`，并部署 `can-utils` 的 candump。原始文件旁保存诊断文件。应用日志文件由 `file_log` 独立控制。
 
 继电器、接触器、辅助电源、电子锁及采集操作仅记录模拟动作；条件判断与测量值来自配置和场景事件。运行平台为 ARM Linux，Zephyr 仅保留编译骨架。
 
@@ -14,7 +14,7 @@
 在 Linux / WSL 根目录运行，需要 GCC、CMake、Ninja；测试另需 Python 3：
 
 ```bash
-sudo apt-get install can-utils   # Debian/Ubuntu；ARM 精简系统需部署匹配架构的 candump
+sudo apt-get install can-utils   # 仅启用抓包时需要；ARM 需匹配架构的 candump
 cmake -G Ninja -DPLATFORM=linux -S . -B build
 cmake --build build -j
 ./build/gbt27930_simulator --config config/charger_2015.json
@@ -41,13 +41,7 @@ bash scripts/verify_build_matrix.sh
 当前自动矩阵为 **29 个双进程场景**，另有独立字节向量、可控时间 TP/状态机测试、配置及启动失败测试；并非预先宣称的 51 场景。缺少 `vcan0` 返回 **77 / SKIP**，接口存在但通信失败属于 FAIL。
 启用抓包的自动场景还要求 `candump` 可用，缺少工具时报告 SKIP；正式模拟器启用抓包但找不到工具则返回非零。
 
-原始抓包可离线转换为易读视图，需 Python 3 和工程的报文字段注册表：
-
-```bash
-python3 scripts/read_can_capture.py logs/实际文件名.candump.log
-```
-
-输出 `.readable.html` 和 `.readable.txt`，显示本地日期时间、收发角色、报文名、PGN、物理值及 TP 控制/序号。HTML 支持搜索。TP 保持逐帧展示，不进行应用负载重组；原始抓包不改写。
+ARM 运行只需部署模拟器可执行文件与配置；启用抓包时额外提供 candump。无需 Python 或协议源码。Python 仅供开发测试使用。
 
 报告写入 `build/scenarios/report.json`，每个场景保留双方配置与日志。真实时间回归另外保存 `report_real_time_2015.json` 和 `report_real_time_2023.json`，检查 TP 分包及周期。WSL 重启后需重新创建 vcan。
 
