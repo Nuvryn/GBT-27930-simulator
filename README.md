@@ -1,63 +1,59 @@
-# GBT-27930-simulator
-GB/T 27930 协议模拟器，用于桩端/BMS 端协议一致性测试。
+# GB/T 27930 协议模拟器
 
-当前已接入平台抽象层，协议状态机、配置解析和错误注入业务尚未实现。
+通过 JSON 选择充电桩或 BMS，支持 2015 和 2023 A 类的握手、辨识、参数配置、准备、充电、中止、统计及异常恢复。每个进程模拟一个角色，通过 SocketCAN 对接。
 
-TP 基础库采用 MIT 许可的 Open-SAE-J1939，源码固定在提交 `2a890c58c6a199d6a6ef793b71bac3c53f594823`。
-已接入静态库及 CAN 回调适配，尚未接入模拟器主循环；使用边界及待补齐项见 [依赖说明](docs/open-sae-j1939.md)。
+继电器、接触器、辅助电源、电子锁及采集操作仅记录模拟动作；条件判断与测量值来自配置和场景事件。运行平台为 ARM Linux，Zephyr 仅保留编译骨架。
 
-## 目录
+依赖使用已经确认的 Open-SAE-J1939、cJSON、EasyLogger 固定源码；构建无需下载。新增库必须先征得使用者同意。来源、许可和哈希校验见 [依赖说明](docs/dependencies.md)。
 
-| 目录 | 职责 |
+## 构建与运行
+
+在 Linux / WSL 根目录运行，需要 GCC、CMake、Ninja；测试另需 Python 3：
+
+```bash
+cmake -G Ninja -DPLATFORM=linux -S . -B build
+cmake --build build -j
+./build/gbt27930_simulator --config config/charger_2015.json
+# 在另一个终端启动对端，或仅启动一个角色对接实物：
+./build/gbt27930_simulator --config config/bms_2015.json
+```
+
+默认配置使用 `can0`，2023 示例位于 `config/charger_2023.json`、`config/bms_2023.json`。`config/default.json` 是 2015 桩端。真实 CAN 的接口、250 kbit/s 速率和权限由系统预先配置；运行时不修改链路。默认使用真实时间，只有 `software_test=true` 才允许加速。
+
+配置非法、CAN 或日志初始化失败、通信异常及会话耗尽均返回非零。正常统计完成返回 0。即使通信异常后重连成功，本轮测试仍保留失败结果，便于发现注入的异常。
+
+## 验证
+
+```bash
+# 需要网络管理权限；准备 vcan 后运行全部 CTest：
+sudo bash scripts/verify_simulator.sh --prepare-vcan
+# 已有 vcan0 时也可普通用户运行：
+SIM_SPEED=10 bash tests/test_runner.sh
+bash scripts/verify_real_time.sh
+# ARM 交叉编译、Zephyr 骨架、依赖哈希及 ASan/UBSan：
+bash scripts/verify_build_matrix.sh
+```
+
+当前自动矩阵为 **28 个双进程场景**，另有独立字节向量、可控时间 TP/状态机测试、配置及启动失败测试；并非预先宣称的 51 场景。缺少 `vcan0` 返回 **77 / SKIP**，接口存在但通信失败属于 FAIL。
+
+报告写入 `build/scenarios/report.json`，每个场景保留双方配置与日志。真实时间回归另外保存 `report_real_time_2015.json` 和 `report_real_time_2023.json`，检查 TP 分包及周期。WSL 重启后需重新创建 vcan。
+
+ARM 构建入口为 `bash scripts/build-armhf.sh`，产物为 `build-armhf/gbt27930_simulator`；默认导出各构建目录的 `compile_commands.json` 供 clangd 使用。`scaffold_demo` 继续保留为原平台验证示例。
+
+## 模块与说明
+
+| 路径 | 职责 |
 |---|---|
-| `osal/` | 任务、互斥锁、信号量、消息队列、单调时钟与内存接口 |
-| `hal/` | CAN、UART、SPI、I2C、GPIO 等硬件接口契约 |
-| `support/` | 配置源、启动参数、控制台与确定性 CAN 收发接口 |
-| `backends/` | POSIX/Linux 后端及 Zephyr 骨架 |
-| `app/` | 当前为平台验证示例，后续承载模拟器业务 |
-| `cmake/` | ARM 工具链及 Zephyr 编译检查桩头文件 |
-| `config/` | 示例配置文本，当前只验证加载，不解析业务字段 |
-| `tests/` | CAN 收发集成测试 |
-| `third_party/` | 固定版本的第三方源码与许可证 |
+| `app/config/` | 严格配置解析、默认值和交叉校验 |
+| `app/logging/` | EasyLogger 封装，帧、状态、超时、模拟动作证据 |
+| `app/transport/` | Open-SAE-J1939 非阻塞 TP 与接收前置校验 |
+| `app/protocol/` | 报文元数据、字段范围、单位和显式字节编解码 |
+| `app/simulator/` | 双角色、两版本流程及单线程运行调度 |
+| `app/fault_injection/` | 有界延迟队列与确定性错误规则 |
+| `osal/`、`hal/`、`support/` | 平台接口契约 |
+| `backends/` | Linux 实现与 Zephyr 骨架 |
+| `tests/` | 独立判据、自动场景与报告导出 |
 
-分层约定见 [架构规范](docs/architecture-spec.md)，移植范围及已知限制见 [移植说明](docs/platform-port.md)。
+详细用法见 [配置说明](docs/simulator_usage.md)、[字段表](docs/config_fields.md)、[基础接口](docs/protocol-core.md)、[验证清单与限制](docs/validation_matrix.md)、[分层约定](docs/architecture-spec.md)。
 
-## 构建与验证
-
-在 Linux 或 WSL 中，从工程根目录运行（需要 CMake、Ninja、GCC）：
-
-```bash
-bash scripts/verify_platform.sh
-./build/scaffold_demo
-./build/scaffold_demo --config config/default.json
-```
-
-默认生成 `build/compile_commands.json`，clangd 可通过 `--compile-commands-dir=build` 使用。
-示例加载配置、探测 `can0` 并输出 5 次 tick；CAN 探测不到只输出信息，不代表 CAN 测试通过。
-配置加载失败返回 1。
-
-CAN 测试通过独立 SocketCAN socket 验证适配器的扩展帧发送、接收、数据内容及非法长度。
-无 `vcan0` 时返回 **77（SKIP）**；有接口但打开或收发失败时返回非零失败码。
-可先以有网络管理权限的用户准备虚拟接口并测试：
-
-```bash
-sudo bash scripts/verify_vcan.sh
-# sudo 不可用时：
-unshare -Urn bash scripts/verify_vcan.sh
-```
-
-WSL 重启后需重新准备虚拟接口。当前未提供协议双进程对跑的 51 场景测试。
-
-ARM Linux 交叉编译（需要 `arm-linux-gnueabihf-gcc`）：
-
-```bash
-bash scripts/build-armhf.sh
-bash scripts/build-armhf.sh verify
-```
-
-Zephyr 仅保留抽象层框架；以下命令只验证桩头文件下的编译，不表示支持真实设备运行：
-
-```bash
-cmake -G Ninja -DPLATFORM=zephyr -S . -B build-zephyr
-cmake --build build-zephyr -j
-```
+当前通过的是软件验证；真实桩和真实 BMS 联调尚缺设备，状态为 **SKIP**。2023 自动重连所引用的外部电气条件不由本项目判定，需要场景提供 `reconnect_allowed`；完整标准认证不在本次结果声明范围内。

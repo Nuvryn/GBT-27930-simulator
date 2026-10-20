@@ -33,18 +33,18 @@ cmake -DPLATFORM=linux -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -S . -B build && cmake
 cmake -DPLATFORM=zephyr -S . -B build-zephyr && cmake --build build-zephyr -j   # 骨架校验
 ```
 
-- `compile_commands.json` 由 `CMakeLists.txt` 的 `set(CMAKE_EXPORT_COMPILE_COMMANDS ON)`（第 24 行）**默认导出**；上面命令里显式写 `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON` 是冗余保险，clangd 索引依赖该文件。
+- `compile_commands.json` 由 `CMakeLists.txt` 的 `set(CMAKE_EXPORT_COMPILE_COMMANDS ON)`**默认导出**；上面命令里显式写 `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON` 是冗余保险，clangd 索引依赖该文件。
 
 # 测试与回归
 
 ```bash
 ./build/test_can_hal                  # 无 vcan0 时返回 77(SKIP)，不是 0，判据必须区分
-SIM_SPEED=10 ./tests/test_runner.sh    # 51 个场景，每场景两个进程对跑
+SIM_SPEED=10 ./tests/test_runner.sh    # 当前 28 个场景，每场景两个进程对跑
 ```
 
 - vcan 准备：`sudo ip link add dev vcan0 type vcan && sudo ip link set vcan0 up`；sudo 不可用时改用 `unshare -Urn bash -c 'ip link add dev vcan0 type vcan && ip link set vcan0 up && <命令>'`。**vcan 不跨 WSL 重启存活**，先 `ip link show vcan0`。
 - **取退出码必须写成 `.sh` 文件再 `wsl -d <distro> -- bash /mnt/d/.../x.sh`**：`wsl ... bash -lc '...; echo $?'` 里的 `$?` 会被引号处理吃掉（实测 `false` 也报 0）。
-- 模拟器 `can_bus_open` 失败时**退出码仍为 0**，脚本判据除退出码外还需 grep 日志中的 `can_bus_open failed`。
+- 正式入口 `gbt27930_simulator` 在 `can_bus_open` 失败时返回非零；场景同时检查退出码和 `can_bus_open failed`。旧 `scaffold_demo` 的 CAN 探测仅作平台示例。
 
 # 编码规范
 
@@ -57,3 +57,11 @@ SIM_SPEED=10 ./tests/test_runner.sh    # 51 个场景，每场景两个进程对
 参考./docs/
 
 # 其他文档
+
+## 实现约束补充
+
+- 硬件动作仅输出日志，测量及自检、预充、准备条件来自配置或事件；不得以日志代替条件判断。
+- 已确认使用 Open-SAE-J1939、cJSON、EasyLogger；新增开源依赖必须先征得用户同意。
+- 当前运行目标为 ARM Linux；Zephyr 只验证骨架。配置、日志和关键资源初始化失败返回非零。
+- 代码注释英文，文档中文；自有 C/H 采用 lower_snake_case，并对本次修改运行 clang-format。
+- 最新用法和测试边界见 docs/simulator_usage.md、docs/validation_matrix.md。
