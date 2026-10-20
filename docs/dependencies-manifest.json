@@ -1,0 +1,56 @@
+{
+  "normalization": "CRLF to LF only",
+  "components": [
+    {
+      "name": "cjson",
+      "repository": "https://github.com/DaveGamble/cJSON",
+      "commit": "6d9f2443ab071f86e5d9b43025a40929ec41c46c",
+      "directory": "third_party/cjson",
+      "files": [
+        {
+          "path": "cJSON.c",
+          "upstream_path": "cJSON.c",
+          "sha256_lf": "607e756460fa0de37d20a7a9181f2de29c97bfb7ce5a0e6c2f548243836cd852"
+        },
+        {
+          "path": "cJSON.h",
+          "upstream_path": "cJSON.h",
+          "sha256_lf": "25b0145150d500498e4d209cec69c18c42cf818bffcc54690be3b895a2a16dee"
+        },
+        {
+          "path": "LICENSE",
+          "upstream_path": "LICENSE",
+          "sha256_lf": "a36dda207c36db5818729c54e7ad4e8b0c6fba847491ba64f372c1a2037b6d5c"
+        }
+      ]
+    },
+    {
+      "name": "easylogger",
+      "repository": "https://github.com/armink/EasyLogger",
+      "commit": "806328e131836662fa83dd43364a53f699fd76ac",
+      "directory": "third_party/easylogger",
+      "files": [
+        {
+          "path": "LICENSE",
+          "upstream_path": "LICENSE",
+          "sha256_lf": "c80023edf0b6ab08a88059549d4a79daa1f3ac3dc6a6350f25dff42fd9a88e44"
+        },
+        {
+          "path": "inc/elog.h",
+          "upstream_path": "easylogger/inc/elog.h",
+          "sha256_lf": "0439cedd8211734356a3541614a5611361d227937776295ef3e80a9d3071e2ce"
+        },
+        {
+          "path": "src/elog_utils.c",
+          "upstream_path": "easylogger/src/elog_utils.c",
+          "sha256_lf": "937eaf98151cb5fa25f102621802637d71ccadd56028098e3a45978a0707d9d0"
+        },
+        {
+          "path": "src/elog.c",
+          "upstream_path": "easylogger/src/elog.c",
+          "sha256_lf": "6858ef276c8e66fe0c621b04fbee51902f85a0831482e48e456f9d5f886d5e00"
+        }
+      ]
+    }
+  ]
+}

@@ -1,2 +1,4 @@
 # Unmodified upstream files only. Project-owned adapters are not exempt.
 third_party/open_sae_j1939/**
+third_party/cjson/**
+third_party/easylogger/**
