@@ -22,3 +22,7 @@ cJSON 编译时限制嵌套深度为 32，配置文件上限 64 KiB。
 核验命令：`python3 scripts/check_dependencies.py`。新组件哈希见 [依赖哈希清单](../third_party/manifests/dependencies-manifest.json)；
 Open-SAE-J1939 使用其单独的快照清单。升级时固定新提交、更新登记和哈希，并重跑协议与构建回归。
 如需修改第三方文件，应单独记录补丁，调整豁免清单，再实施变更；本次未修改上游源码。
+
+## 外部运行工具
+
+用户指定的 `candump` 来自 [can-utils](https://github.com/linux-can/can-utils)。它以独立进程运行，不链接或复制源码到本工程，故不计入 vendored 文件哈希清单。Linux/ARM 系统启用抓包时需自行提供对应架构的工具；默认按 PATH 查找。WSL 验证包版本为 Ubuntu 的 2020.11.0-1。升级工具或目标镜像后需重跑抓包检查；构建不自动下载和安装该工具。

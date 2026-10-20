@@ -18,6 +18,7 @@
 | `source` / `peer` | 桩 86/244；BMS 244/86 | 0..253，不能相同 |
 | `software_test` / `speed` | false / 1 | 加速仅用于双方受控软件回归，速度 1..100 |
 | `file_log` / `log_path` | true / 空 | 默认生成 logs/YYYYMMDD_HHMMSS_纳秒_PID.log，使用平台本地时间；显式路径最多 255 字节并保留覆盖行为；false 关闭文件保存 |
+| `candump` / `candump_path` | true / 空 | 同步启动外部 candump；空路径默认关联应用日志，文件保存关闭时自行按真实时间命名；显式路径最多 255 字节，已有文件拒绝覆盖 |
 | `self_test_pass` | true | 自检结果；false 进入故障处理 |
 | `parameters_match` | true | 场景给出的参数匹配条件，同时仍校验收到的电压与能力范围 |
 | `precharge_pass` | true | 预充结果；false 不进入正常充电 |
@@ -115,5 +116,19 @@
 采用 EasyLogger 原生异步缓冲，由独立线程批量输出。64 KiB 缓冲预先分配，协议线程不等待磁盘/终端 I/O；缓冲满会拒绝整条日志并锁存 ENOSPC，最终退出非零。写入失败同样锁存。退出先停止生产、排空并 join 线程，再关闭文件；日志保证到达 stdio 刷新层，不等于断电持久化。生成文件名受 Linux TZ/系统时区影响，可使用 `TZ=Asia/Shanghai` 指定中国时区。
 
 正常完成输出 `RESULT status=PASS` 并退出 0；任何一次协议故障会保留本次进程的失败结果，即使后来成功重连并完成统计。异步写入在最后排空时失败也会令进程退出非零，工作线程另输出带错误码的 FAIL 诊断。场景报告的 PASS 表示观察到了预期结果，因此有意丢包的场景可以在模拟器退出 1 时判为 PASS。
+
+### 原始抓包与易读视图
+
+Linux 使用 `posix_spawnp` 直接启动 `candump -L -d <接口>,0:0,#FFFFFFFF`，不通过 shell。捕获同一接口上的全部数据帧及错误帧，不限于当前角色。底层抓到的是实际总线数据，包括错误注入后的帧；软件丢弃而未发送的报文不会出现在总线上。外部工具来源为 [linux-can/can-utils](https://github.com/linux-can/can-utils)，部署时需将匹配目标架构的 `candump` 放入 PATH。WSL 验证使用发行版 can-utils 2020.11.0-1。
+
+默认文件名为 `<应用日志路径>.candump.log`，例如 `logs/20261020_183000_123456789_4321.log.candump.log`；如果 `file_log=false`，抓包仍可独立开启，生成 `logs/YYYYMMDD_HHMMSS_纳秒_PID.candump.log`。诊断另存 `<抓包路径>.stderr.log`。二者均独占创建，避免覆盖旧证据；应用日志中 CAPTURE 条目记录实际路径。
+
+抓包由外部进程接收，平台工作线程保存 stdout/stderr，不在协议线程中写抓包文件。原始格式包含真实 Unix 时间戳、接口、CAN ID、数据，不随 speed 改变时间戳；加速回归的真实帧间隔会相应缩短。
+
+启动前保留 100 ms 真实时间用于观察早期错误；结束后保留 100 ms 让工具接收最后的内核回环帧，再发送 SIGINT、排空管道、等待子进程退出。工具没有就绪握手，这些宽限不能证明任意负载下零丢帧。退出不响应时升级 SIGKILL 并报告失败。缺少工具、提前退出、stderr/丢帧诊断、写文件失败或停止超时均使本次进程退出非零；关闭 candump 不影响普通协议运行。SIGKILL 杀死模拟器或系统掉电不保证抓包子进程清理和日志完整性。
+
+易读视图使用 `python3 scripts/read_can_capture.py <原始文件>` 离线生成。字段位置与单位读取工程现有 codec 注册表，额外展示 TP.CM 类型和 TP.DT 包序号；不重写传输栈、不重组 TP 负载、不代替一致性判定。自定义源地址时使用 `--charger-address 0x56 --bms-address 0xF4`。原始未知行、标准帧和错误帧保留供人工核对。模拟器在 ARM 上运行无需 Python，转换视图可以在开发 PC 上执行。
+
+自动场景为每个角色生成原始文件、HTML、文本视图，并将成功发送帧与 candump 内容按 ID/字节/次数核对，包含最后的统计帧。报告中的 readable_captures 指向易读 HTML。
 
 自动运行器独立检查双方退出码、日志证据和正常状态顺序；不读取引擎内部状态。输出包含 PASS/FAIL/SKIP、错误说明、退出码和证据目录。支持 `--case <名称>`、`--build-dir <路径>`、`--real-time`。真实时间正常用例检查 DT 至少 10 ms、BCL/CCS 周期 50..100 ms；100 ms 上界用于暴露本机调度迟滞，不作为标准允许偏差。

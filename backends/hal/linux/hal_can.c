@@ -352,7 +352,7 @@ hal_can_bus_t hal_can_get_bus(const char *name)
 	if (ifindex == 0)
 		return NULL;
 
-	fd = socket(AF_CAN, SOCK_RAW, CAN_RAW);
+	fd = socket(AF_CAN, SOCK_RAW | SOCK_CLOEXEC, CAN_RAW);
 	if (fd < 0)
 		return NULL;
 

@@ -6,11 +6,11 @@
 
 | 检查 | 结果 | 证据/复现入口 |
 |---|---|---|
-| Linux 严格告警构建与 12 项 CTest | PASS | `scripts/verify_simulator.sh --prepare-vcan`；`build/Testing/Temporary/LastTest.log` |
+| Linux 严格告警构建与 14 项 CTest | PASS | `scripts/verify_simulator.sh --prepare-vcan`；`build/Testing/Temporary/LastTest.log` |
 | 2015、2023 双角色正常充电及双方主动结束 | PASS | 四个 normal 场景及独立可控时间引擎测试 |
 | 真实时间双角色正常充电 | PASS | `scripts/verify_real_time.sh`；`report_real_time_2015.json` / `report_real_time_2023.json` |
 | DT 最小 10 ms 与 BCL/CCS 50 ms 调度 | PASS | 独立 TP 可控时间检查、真实时间日志间隔；后者允许至 100 ms 用于本机回归 |
-| ASan + UBSan | PASS | `scripts/verify_build_matrix.sh` 的 5 项日志/核心/CLI 检查；启动、异常及最大 TP 负载路径 |
+| ASan + UBSan | PASS | `scripts/verify_build_matrix.sh` 的 6 项抓包/日志/核心/CLI 检查；启动、异常及最大 TP 负载路径 |
 | 固定依赖完整性 | PASS | `scripts/check_dependencies.py`，原始 Open-SAE-J1939 58 文件、cJSON、EasyLogger |
 | ARM Linux 交叉编译 | PASS | `build-armhf/gbt27930_simulator`；ELF32 ARM EABI5，v7，VFP 寄存器传参 |
 | Zephyr 骨架编译 | PASS | `build-zephyr/gbt27930_simulator`；仅桩头文件构建，无真实 SDK/设备运行 |
@@ -26,7 +26,7 @@ CTest 中 `sim_core` 验证独立 BCL、BCP、CTS、BMV 字节向量及两版长
 
 ## 软件场景矩阵
 
-每个场景启动两个独立进程。PASS 表示双方退出码和外部证据符合预期，异常场景允许且通常要求进程退出 1。28 个场景没有覆盖所有“版本 × 角色 × 阶段 × 正常/异常”的笛卡尔积，不能据此声称所有协议场景已完成。
+每个场景启动两个独立进程。PASS 表示双方退出码和外部证据符合预期，异常场景允许且通常要求进程退出 1。29 个场景没有覆盖所有“版本 × 角色 × 阶段 × 正常/异常”的笛卡尔积，不能据此声称所有协议场景已完成。
 
 | 场景 | 版本 | 主要角色/阶段 | 类型与判据 |
 |---|---|---|---|
@@ -55,6 +55,7 @@ CTest 中 `sim_core` 验证独立 BCL、BCP、CTS、BMV 字节向量及两版长
 | rx_drop_rule | 2015 | 桩/充电 | 接收方向注入导致超时 |
 | bounded_drop_window | 2015 | BMS/充电 | 限时丢弃后恢复正常发送 |
 | no_file_logging | 2015 | 双方/全流程 | 关闭后不创建日志文件，控制台可判定 |
+| candump_disabled | 2015 | 双方/全流程 | 关闭抓包不启动外部工具、不创建抓包文件 |
 | retry_recovers | 2015 | 双方/恢复 | 有限次数丢包后重新辨识并完成统计，保留失败历史 |
 | retry_exhausted | 2015 | 双方/恢复 | 有限重试耗尽，无无限等待 |
 | unplug_replug | 2023 | 双方/充电与重启 | 模拟断开、重新插拔后重新握手 |
@@ -84,6 +85,12 @@ BRM 使用资料勘误后的 49 字节；资料称 23 种报文，但逐项仅�
 - 锁住消费者后填充异步缓冲，验证 ENOSPC 可见、关闭返回失败；再次打开无残留并保留最后一条日志。
 - 使用文件大小限制制造工作线程写入失败，验证排空/关闭将 EIO 返回给调用方。
 - simulator_cli：未指定 log_path 时连续启动两次，验证时间命名、文件不重名及 CAN 初始化失败日志已在退出前落入文件。
-- 28 个双进程场景及两版真实时间回归继续检查最终证据，覆盖文件启用/关闭。
+- 29 个双进程场景及两版真实时间回归继续检查最终证据，覆盖文件启用/关闭。
 
 Zephyr 的异步工作线程与文件后端当前仍返回 ENOSYS，骨架构建不代表具备日志线程运行能力。
+
+## candump 与易读视图
+
+29 个双进程场景中的 28 个默认启用抓包，核对每个角色实际成功 TX 的 ID、数据及次数均出现在对应原始文件中；另有关闭抓包的独立场景。两版真实时间正常场景同样检查原始帧覆盖。
+
+can_capture 使用独立替身进程检查：工具缺失、非法接口参数、启动后退出、stderr 诊断、已有文件保护、正常停止、停止超时强制回收、丢帧诊断、文件写入失败及无残留子进程。can_capture_reader 用独立向量验证时间间隔、地址角色、TP 控制、物理单位和 HTML 转义。上述替身测试不替代使用真实 candump 的 vcan 回归。

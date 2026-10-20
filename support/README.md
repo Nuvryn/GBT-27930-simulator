@@ -42,3 +42,7 @@ Zephyr 侧未实现的函数返回 `-ENOSYS`/`NULL`（或**有注释的计数丢
 4. 更新本文件与 `docs/architecture-spec.md`。
 
 > 说明：`support/` 是**项目自建**的轴（上游框架没有），因此命名/内容由项目自行维护，无需与任何上游同步。
+
+## 日志与抓包契约
+
+`log_sink.h` 管理日志输出线程和文件，隔离 EasyLogger 与平台 I/O。`can_capture.h` 补充框架缺少的外部抓包进程生命周期：Linux 后端启动 candump、保存两路输出并回收子进程；Zephyr 启动返回 ENOSYS。应用通过纯契约启动、检查错误和停止，不直接调用 pthread、spawn、waitpid 或文件 API。抓包是进程内单实例，文件和子进程均由后端持有。

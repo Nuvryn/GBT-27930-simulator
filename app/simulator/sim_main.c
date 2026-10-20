@@ -4,6 +4,7 @@
 #include "logging/sim_log.h"
 #include "support/args.h"
 #include "support/can_bus.h"
+#include "support/can_capture.h"
 #include "support/console.h"
 #include "support/log_sink.h"
 #include "osal/osal.h"
@@ -56,14 +57,39 @@ static int sim_main_run(const args_t *args)
         (void) sim_log_close();
         return 1;
     }
+    console_set_stop_handler(sim_main_stop);
+    if (config.candump)
+    {
+        char capture_path[512];
+        const char *path = config.candump_path;
+        if (path[0] == '\0' && log_sink_path()[0] != '\0')
+        {
+            (void) snprintf(capture_path, sizeof(capture_path), "%s.candump.log", log_sink_path());
+            path = capture_path;
+        }
+        rc = can_capture_start(config.can_interface, path);
+        if (rc != 0)
+        {
+            sim_log_event("ERROR", "candump startup failed rc=%d path=%s", rc, can_capture_path());
+            console_set_stop_handler(NULL);
+            can_bus_close();
+            (void) sim_log_close();
+            return 1;
+        }
+        sim_log_event("CAPTURE", "started interface=%s path=%s", config.can_interface, can_capture_path());
+    }
     sim_engine_t *engine = sim_engine_create(&config, sim_main_send, NULL);
     if (engine == NULL)
     {
+        if (config.candump)
+        {
+            (void) can_capture_stop();
+        }
+        console_set_stop_handler(NULL);
         can_bus_close();
         (void) sim_log_close();
         return 1;
     }
-    console_set_stop_handler(sim_main_stop);
     uint32_t start_ms = osal_get_tick_ms();
     int result = 0;
     while (result == 0)
@@ -105,9 +131,23 @@ static int sim_main_run(const args_t *args)
             result = -1;
             sim_log_event("ERROR", "log sink or CAN ring lost data");
         }
+        if (config.candump && can_capture_error() != 0)
+        {
+            result = -1;
+            sim_log_event("ERROR", "candump runtime failed rc=%d", can_capture_error());
+        }
         if (result == 0)
         {
             osal_delay_ms(1u);
+        }
+    }
+    if (config.candump)
+    {
+        rc = can_capture_stop();
+        sim_log_event("CAPTURE", "stopped rc=%d path=%s", rc, can_capture_path());
+        if (rc != 0)
+        {
+            result = -1;
         }
     }
     sim_log_event("RESULT", "status=%s code=%d", result == 1 ? "PASS" : "FAIL", result);

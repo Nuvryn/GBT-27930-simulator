@@ -15,6 +15,8 @@ def main():
              ({**base, "parameters": {"bcl_current_ma": 400001}}, "parameters"),
              ({**base, "parameters": {"bro_ready": 1}}, "parameters"),
              ({**base, "unknown": 1}, "unknown"),
+             ({**base, "candump": "yes"}, "candump"),
+             ({**base, "candump_path": 1}, "candump_path"),
              ({**base, "source": 1, "peer": 1}, "cross-field"),
              ({**base, "file_log": True, "log_path": str(directory / "missing/file.log")}, "log initialization failed"),
              (base, "can_bus_open failed")]

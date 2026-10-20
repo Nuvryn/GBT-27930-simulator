@@ -2,10 +2,12 @@
 """双进程 vcan 回归；按独立预期检查结果，生成 JSON 报告并清理进程。"""
 import argparse
 import copy
+from collections import Counter
 import json
 import os
 from pathlib import Path
 import re
+import shutil
 import socket
 import subprocess
 import sys
@@ -84,6 +86,8 @@ def scenarios():
              bms={"faults": [dict(stage="charging", message="BCL", action="drop", count=0, after_ms=200, duration_ms=200)]}, bms_evidence=["FAULT"]),
         dict(name="no_file_logging", version=2015, expect=0,
              charger={"file_log": False}, bms={"file_log": False}, evidence=["status=PASS"]),
+        dict(name="candump_disabled", version=2015, expect=0,
+             charger={"candump": False}, bms={"candump": False}, forbid=["CAPTURE"]),
         dict(name="retry_recovers", version=2015, expect=1,
              charger={"retries": 2, "messages": {"BCL": {"timeout_ms": 300}}},
              bms={"retries": 2, "faults": [dict(stage="charging", message="BCL", action="drop", after_ms=200, count=8)]},
@@ -111,17 +115,21 @@ def merge(base, override):
 
 def run_case(case, binary, directory, speed):
     directory.mkdir(parents=True, exist_ok=True)
-    processes, handles, texts, file_logs = {}, [], {}, {}
+    processes, handles, texts, file_logs, capture_enabled = {}, [], {}, {}, {}
     result = {"name": case["name"], "status": "FAIL", "errors": []}
     try:
         for role in ("charger", "bms"):
             config = dict(role=role, version=case["version"], can_interface="vcan0", software_test=True,
                           speed=speed, stop_after_ms=2000 if role == "charger" else 0,
                           max_session_ms=12000, retries=0, recovery_wait_ms=500,
-                          file_log=True, log_path=str(directory / f"{role}.events.log"))
+                          file_log=True, log_path=str(directory / f"{role}.events.log"),
+                          candump_path=str(directory / f"{role}.candump.log"))
             merge(config, case.get(role, {}))
             file_logs[role] = config["file_log"]
+            capture_enabled[role] = config.get("candump", True)
             (directory / f"{role}.events.log").unlink(missing_ok=True)
+            (directory / f"{role}.candump.log").unlink(missing_ok=True)
+            (directory / f"{role}.candump.log.stderr.log").unlink(missing_ok=True)
             path = directory / f"{role}.json"
             path.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
             handle = (directory / f"{role}.stdout.log").open("w", encoding="utf-8")
@@ -136,6 +144,22 @@ def run_case(case, binary, directory, speed):
             if not file_logs[role] and (directory / f"{role}.events.log").exists():
                 result["errors"].append(f"{role}: disabled file logging created a file")
             texts[role] = text
+            capture_path = directory / f"{role}.candump.log"
+            if capture_enabled[role]:
+                capture = capture_path.read_text()
+                rendered = subprocess.run([sys.executable, str(ROOT / "scripts/read_can_capture.py"), str(capture_path)],
+                                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=5)
+                if rendered.returncode != 0:
+                    result["errors"].append(f"{role}: readable capture generation failed: {rendered.stdout}")
+                result.setdefault("readable_captures", {})[role] = str(capture_path) + ".readable.html"
+                raw_frames = Counter((identifier.upper(), payload.upper()) for identifier, payload in
+                                     re.findall(r"^\(\d+\.\d+\)\s+vcan0\s+([0-9A-Fa-f]+)#([0-9A-Fa-f]*)$", capture, re.M))
+                tx_frames = Counter((identifier, payload.replace(" ", "")) for identifier, payload in
+                                    re.findall(r"^TX\s+\[\d+ ms\] id=([0-9A-F]+) len=\d+ data=([0-9A-F ]*)$", text, re.M))
+                if not raw_frames or tx_frames - raw_frames or "CAPTURE" not in text or "stopped rc=0" not in text:
+                    result["errors"].append(f"{role}: missing/failed capture or TX frames absent from candump")
+            elif capture_path.exists():
+                result["errors"].append(f"{role}: disabled capture created a file")
             if process.returncode != case["expect"]:
                 result["errors"].append(f"{role}: exit {process.returncode}, expected {case['expect']}")
             for token in case.get("evidence", []) + case.get(f"{role}_evidence", []):
@@ -213,11 +237,13 @@ def main():
         if not cases:
             parser.error("unknown scenario")
     try:
+        if any(case.get(role, {}).get("candump", True) for case in cases for role in ("charger", "bms")) and shutil.which("candump") is None:
+            raise OSError("candump unavailable; install can-utils")
         socket.if_nametoindex("vcan0")
-    except OSError:
-        results = [dict(name=case["name"], status="SKIP", reason="vcan0 unavailable") for case in cases]
+    except OSError as error:
+        results = [dict(name=case["name"], status="SKIP", reason=str(error)) for case in cases]
         (output / "report.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
-        print("SKIP: vcan0 unavailable")
+        print(f"SKIP: vcan0 or candump unavailable: {error}")
         return 77
     speed = 1 if args.real_time else int(os.environ.get("SIM_SPEED", "10"))
     if not 1 <= speed <= 100:

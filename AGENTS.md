@@ -39,7 +39,7 @@ cmake -DPLATFORM=zephyr -S . -B build-zephyr && cmake --build build-zephyr -j   
 
 ```bash
 ./build/test_can_hal                  # 无 vcan0 时返回 77(SKIP)，不是 0，判据必须区分
-SIM_SPEED=10 ./tests/test_runner.sh    # 当前 28 个场景，每场景两个进程对跑
+SIM_SPEED=10 ./tests/test_runner.sh    # 当前 29 个场景，每场景两个进程对跑
 ```
 
 - vcan 准备：`sudo ip link add dev vcan0 type vcan && sudo ip link set vcan0 up`；sudo 不可用时改用 `unshare -Urn bash -c 'ip link add dev vcan0 type vcan && ip link set vcan0 up && <命令>'`。**vcan 不跨 WSL 重启存活**，先 `ip link show vcan0`。

@@ -49,6 +49,8 @@ typedef struct
     bool software_test;
     bool file_log;
     char log_path[256];
+    bool candump;
+    char candump_path[256];
     bool self_test_pass;
     bool parameters_match;
     bool precharge_pass;

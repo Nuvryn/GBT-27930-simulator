@@ -71,6 +71,8 @@
 | `hal/` | `backends/hal/{linux,zephyr}` | `linux` = 平台名 |
 | `support/` | `backends/support/{linux,zephyr}` | 补充层（项目自建） |
 
+补充契约还包括 `log_sink.h`（日志工作线程/文件）及 `can_capture.h`（外部 CAN 抓包生命周期）。Linux 使用平台线程与直接 spawn 管理，Zephyr 未实现的启动操作返回 ENOSYS；应用不感知进程和文件实现。
+
 ---
 
 ## 3. 命名规范

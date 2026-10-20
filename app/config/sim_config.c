@@ -70,6 +70,7 @@ void sim_config_defaults(sim_config_t *out_config)
     out_config->peer = 0xF4u;
     out_config->speed = 1u;
     out_config->file_log = true;
+    out_config->candump = true;
     memcpy(out_config->can_interface, "can0", 5u);
     out_config->self_test_pass = true;
     out_config->parameters_match = true;
@@ -356,6 +357,7 @@ static bool sim_config_scalar(const cJSON *item, sim_config_t *config)
     }
     SIM_CONFIG_BOOL("software_test", software_test)
     SIM_CONFIG_BOOL("file_log", file_log)
+    SIM_CONFIG_BOOL("candump", candump)
     SIM_CONFIG_BOOL("self_test_pass", self_test_pass)
     SIM_CONFIG_BOOL("parameters_match", parameters_match)
     SIM_CONFIG_BOOL("precharge_pass", precharge_pass)
@@ -397,6 +399,10 @@ static bool sim_config_scalar(const cJSON *item, sim_config_t *config)
     if (strcmp(key, "log_path") == 0)
     {
         return sim_config_string(item, config->log_path, sizeof(config->log_path));
+    }
+    if (strcmp(key, "candump_path") == 0)
+    {
+        return sim_config_string(item, config->candump_path, sizeof(config->candump_path));
     }
     if (strcmp(key, "source") == 0 && sim_config_integer(item, 0, 253, &value))
     {

@@ -40,3 +40,4 @@ Linux HAL 的历史修补说明保留在 `backends/hal/linux/DEVIATIONS.md`，�
 - HAL 没有公共设备销毁接口；`can_bus_close()` 解除过滤器并重置适配器状态，底层资源最终由进程退出回收。当前适合每个进程模拟一个角色。
 - 已加强启动参数的速度校验、配置源大小/NUL 校验；正式模拟器通过 cJSON 严格解析配置。新增 support/log_sink.h 和两平台后端承载日志 I/O；其余外设仍需各自专项审核。
 - scaffold_demo 保留原平台验证职责；正式 gbt27930_simulator 已包含编解码、状态机、超时与错误注入，具体测试和未验证项见 validation_matrix.md。
+- 新增 can_capture 契约和两平台后端。Linux HAL CAN socket 与日志文件设置 close-on-exec，防止启动外部 candump 时继承模拟器资源；导入清单仍表示原始来源快照，不随本地适配重算。

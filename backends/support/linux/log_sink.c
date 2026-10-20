@@ -130,7 +130,7 @@ static int log_sink_open_generated(void)
         return -EIO;
     }
     (void) snprintf(s_log_sink_path, sizeof(s_log_sink_path), "logs/%s_%09ld_%ld.log", stamp, now.tv_nsec, (long) getpid());
-    int fd = open(s_log_sink_path, O_WRONLY | O_CREAT | O_EXCL, 0644);
+    int fd = open(s_log_sink_path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0644);
     if (fd < 0)
     {
         return -errno;
@@ -170,7 +170,8 @@ int log_sink_open(bool file_enabled, const char *path)
         return -errno;
     }
     struct stat info;
-    if (fstat(fileno(s_log_sink_file), &info) != 0 || !S_ISREG(info.st_mode))
+    if (fstat(fileno(s_log_sink_file), &info) != 0 || !S_ISREG(info.st_mode) ||
+        fcntl(fileno(s_log_sink_file), F_SETFD, FD_CLOEXEC) != 0)
     {
         (void) fclose(s_log_sink_file);
         s_log_sink_file = NULL;
