@@ -113,6 +113,40 @@ def merge(base, override):
     return base
 
 
+def check_normal_lifecycle(text, role, version, initiator):
+    entries = []
+    for line_number, line in enumerate(text.splitlines()):
+        match = re.fullmatch(r"(TX|RX)\s+\[\d+ ms\] id=([0-9A-F]+) len=\d+ data=([0-9A-F ]*)", line)
+        if match:
+            direction, identifier, payload = match.groups()
+            entries.append((line_number, direction, (int(identifier, 16) >> 8) & 0x3FF00, bytes.fromhex(payload)))
+    def positions(direction, pgn):
+        return [line for line, side, kind, _ in entries if side == direction and kind == pgn]
+    errors = []
+    if role == "charger":
+        bsd, csd, cst = positions("RX", 0x1C00), positions("TX", 0x1D00), positions("TX", 0x1A00)
+        if not bsd or not csd or not cst or min(csd) <= min(bsd) or max(cst) >= min(bsd):
+            errors.append("CST must continue until BSD; CSD must start after BSD")
+    else:
+        bsd, cst, csd = positions("TX", 0x1C00), positions("RX", 0x1A00), positions("RX", 0x1D00)
+        bst, bcl = positions("TX", 0x1900), positions("TX", 0x1000)
+        bro_aa = [line for line, side, pgn, data in entries if side == "TX" and pgn == 0x0900 and data == b"\xaa"]
+        cro_aa = [line for line, side, pgn, data in entries if side == "RX" and pgn == 0x0A00 and data == b"\xaa"]
+        if not bcl or not bro_aa or not cro_aa or min(bcl) <= max(min(bro_aa), min(cro_aa)):
+            errors.append("BCL requires actual BRO=AA transmission and CRO=AA reception")
+        if not bsd or not cst or not bst or not csd or min(bsd) <= min(cst) or max(bst) >= min(bsd):
+            errors.append("invalid BST/CST/BSD ordering")
+        elif version == 2023 and initiator == "charger" and not 5 <= len(bst) <= 10:
+            errors.append(f"2023 charger-initiated stop requires 5..10 BST frames, got {len(bst)}")
+        if bsd and csd:
+            after_csd = [line for line in bsd if line > min(csd)]
+            if version == 2023 and after_csd:
+                errors.append("2023 BSD must stop on CSD")
+            elif version == 2015 and len(after_csd) < 2:
+                errors.append("2015 BSD must remain periodic until simulated auxiliary power off")
+    return errors
+
+
 def run_case(case, binary, directory, speed):
     directory.mkdir(parents=True, exist_ok=True)
     processes, handles, texts, file_logs, capture_enabled = {}, [], {}, {}, {}
@@ -144,6 +178,9 @@ def run_case(case, binary, directory, speed):
             if not file_logs[role] and (directory / f"{role}.events.log").exists():
                 result["errors"].append(f"{role}: disabled file logging created a file")
             texts[role] = text
+            if case["name"].startswith("normal_"):
+                initiator = "bms" if case["name"].endswith("bms_stop") else "charger"
+                result["errors"].extend(f"{role}: {error}" for error in check_normal_lifecycle(text, role, case["version"], initiator))
             capture_path = directory / f"{role}.candump.log"
             if capture_enabled[role]:
                 capture = capture_path.read_text()

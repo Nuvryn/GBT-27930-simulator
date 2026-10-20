@@ -6,11 +6,11 @@
 
 | 检查 | 结果 | 证据/复现入口 |
 |---|---|---|
-| Linux 严格告警构建与 13 项 CTest | PASS | `scripts/verify_simulator.sh --prepare-vcan`；`build/Testing/Temporary/LastTest.log` |
+| Linux 严格告警构建与 14 项 CTest | PASS | `scripts/verify_simulator.sh --prepare-vcan`；`build/Testing/Temporary/LastTest.log` |
 | 2015、2023 双角色正常充电及双方主动结束 | PASS | 四个 normal 场景及独立可控时间引擎测试 |
 | 真实时间双角色正常充电 | PASS | `scripts/verify_real_time.sh`；`report_real_time_2015.json` / `report_real_time_2023.json` |
 | DT 最小 10 ms 与 BCL/CCS 50 ms 调度 | PASS | 独立 TP 可控时间检查、真实时间日志间隔；后者允许至 100 ms 用于本机回归 |
-| ASan + UBSan | PASS | `scripts/verify_build_matrix.sh` 的 6 项抓包/日志/核心/CLI 检查；启动、异常及最大 TP 负载路径 |
+| ASan + UBSan | PASS | `scripts/verify_build_matrix.sh` 的 7 项抓包/日志/核心/启停边界/CLI 检查；启动、异常及最大 TP 负载路径 |
 | 固定依赖完整性 | PASS | `scripts/check_dependencies.py`，原始 Open-SAE-J1939 58 文件、cJSON、EasyLogger |
 | ARM Linux 交叉编译 | PASS | `build-armhf/gbt27930_simulator`；ELF32 ARM EABI5，v7，VFP 寄存器传参 |
 | Zephyr 骨架编译 | PASS | `build-zephyr/gbt27930_simulator`；仅桩头文件构建，无真实 SDK/设备运行 |
@@ -23,6 +23,8 @@
 CTest 中 `sim_core` 验证独立 BCL、BCP、CTS、BMV 字节向量及两版长度；其余字段通过注册表范围和长度检查及编码/解码往返覆盖，尚需补充更多独立人工向量。最大 1785 字节 TP、序号 0、短帧、RTS 冲突、提前 ACK、实际发送失败、T1～T4 及回绕有独立测试。
 
 `sim_engine` 对 2015 的 BRM、BCP、CML、BRO、CRO、BCL、BCS、CCS、BSM、BST、CST、BSD、CSD 分别丢弃，确认接收方在有限时间内失败；另覆盖 2023 从未收到 BSM 时的特定规则。测试时间可控，不靠 sleep 判断超时边界。
+
+`message_lifecycle` 使用独立脚本化对端，检查两版报文启停边界：BRO 实际发送 AA 与接收 CRO AA 的双条件、CCS 启动差异、BST 回复次数、CST 等待 BSD、CSD 不提前启动、统计报文保持至 CRM/模拟断电、错误报文跨恢复保持，以及 2023 两次更新 BCP 完成后才发送 BRO 00。四个正常双进程场景还根据原始帧日志检查关键先后关系与 BST 次数。
 
 ## 软件场景矩阵
 

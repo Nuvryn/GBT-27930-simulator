@@ -200,11 +200,16 @@ static int test_config(void)
     char error[256];
     TEST_CHECK(sim_config_parse("{\"role\":\"bms\",\"version\":2015}", &config, error, sizeof(error)) == 0 && config.source == 0xF4u);
     TEST_CHECK(!config.candump);
+    TEST_CHECK(config.auto_aux_power_off && config.aux_power_off_delay_ms == 1000u);
+    TEST_CHECK(sim_config_parse("{\"role\":\"bms\",\"version\":2023,\"auto_aux_power_off\":false,\"aux_power_off_delay_ms\":0,\"events\":[{\"stage\":\"done\",\"action\":\"aux_power_off\"}]}", &config, error, sizeof(error)) == 0 && !config.auto_aux_power_off && config.aux_power_off_delay_ms == 0u);
     TEST_CHECK(sim_config_parse("{\"role\":\"bms\",\"version\":2015,\"cell_group\":[3],\"cell_voltage_mv\":[3650]}", &config, error, sizeof(error)) == 0 && config.values.cell_groups[0] == 3u);
     TEST_CHECK(sim_config_parse("{\"role\":\"bms\",\"version\":2015,\"cell_group\":[3,4],\"cell_voltage_mv\":[3650]}", &config, error, sizeof(error)) != 0);
     const char *bad[] = {"{}", "{\"role\":\"bms\",\"role\":\"charger\",\"version\":2015}",
         "{\"role\":\"bms\",\"version\":2015,\"speed\":10}", "{\"role\":\"bms\",\"version\":2022}",
-        "{\"role\":\"bms\",\"version\":2015,\"unknown\":1}", "{\"role\":\"bms\",\"version\":2015,\"log_path\":5}"};
+        "{\"role\":\"bms\",\"version\":2015,\"unknown\":1}", "{\"role\":\"bms\",\"version\":2015,\"log_path\":5}",
+        "{\"role\":\"bms\",\"version\":2015,\"auto_aux_power_off\":1}",
+        "{\"role\":\"bms\",\"version\":2015,\"aux_power_off_delay_ms\":-1}",
+        "{\"role\":\"bms\",\"version\":2015,\"aux_power_off_delay_ms\":3600001}"};
     for (size_t idx = 0u; idx < sizeof(bad) / sizeof(bad[0]); idx++)
     {
         TEST_CHECK(sim_config_parse(bad[idx], &config, error, sizeof(error)) != 0);

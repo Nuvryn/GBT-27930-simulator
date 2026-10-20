@@ -26,6 +26,8 @@
 | `ready_delay_ms` | 250 | 0..3600000；模拟准备耗时 |
 | `ready_timeout_ms` | 60000 | 1..3600000；整体准备等待上限 |
 | `stop_after_ms` | 5000 | 0..3600000；进入充电后的主动结束时间，0 禁用；BMS 示例为 0 |
+| `auto_aux_power_off` | true | 统计完成后按场景自动关闭模拟辅助电源，仅记录动作，不操作硬件 |
+| `aux_power_off_delay_ms` | 1000 | 0..3600000；统计完成至上述模拟断电的等待时间 |
 | `max_session_ms` | 180000 | 1..3600000；整个进程会话上限 |
 | `recovery_wait_ms` | 30000 | 1..3600000；恢复等待上限 |
 | `retries` | 3 | 0..100；恢复尝试数，0 不重试 |
@@ -66,6 +68,23 @@
 
 其他根字段：`manufacturer` 固定 4 字节、`vin` 固定 17 字节、`region` 固定 3 字节、`software_bytes` 8 个字节、`reserved_bytes` 16 个字节；字节范围 0..255。`cell_voltage_mv` 为 1..256 个 0..24000 mV 的 10 mV 整数倍；`cell_group` 为同长度 0..15 分组号，省略为 0；`temperature_degc` 为 1..128 个 −50..200 ℃整数。
 
+统计完成后的发送仍遵循各版本停止条件。2015 BMS 收到 CSD 后继续 BSD，直到新 CRM 或模拟断电；2023 BMS 收到 CSD 后结束。桩端 CSD 在收到 BSD 后才启动，保持到模拟断电。默认等待 1000 ms 自动模拟断电；将 `auto_aux_power_off` 设为 false 时，可在 `done` 阶段配置 `aux_power_off` 事件，未提供条件则仍受 `max_session_ms` 限制。
+
+2023 BMS 首次收到 CML 后，可在实际发送 BRO AA 前通过事件修改 BCP 字段。下面配置会先完成两次更新 BCP 传输，再发送 BRO 00 并等待就绪；桩端在准备阶段重新校验收到的更新参数：
+
+```json
+{
+  "role": "bms",
+  "version": 2023,
+  "can_interface": "vcan0",
+  "auto_aux_power_off": false,
+  "events": [
+    {"stage": "ready", "action": "set_parameter", "parameter": "bcp_max_voltage_mv", "value": 440000},
+    {"stage": "done", "after_ms": 1500, "action": "aux_power_off"}
+  ]
+}
+```
+
 ## 错误注入
 
 最多 32 条 `faults`，与正常物理参数分开；同一次处理只命中声明顺序中的第一条合格规则。完整应用负载和底层 TP 帧分别经过注入点。延迟和重复产生的数据直接派发，不再次递归命中规则。
@@ -97,7 +116,7 @@
 
 ## 自动事件
 
-最多 32 条 `events`，每条一次触发。阶段和时间规则与 faults 相同。`action` 为 stop、pause、resume、unplug、replug、set_parameter；set_parameter 还需合法的 `parameter` 和 `value`。示例：
+最多 32 条 `events`，每条一次触发。阶段和时间规则与 faults 相同。`action` 为 stop、pause、resume、unplug、replug、aux_power_off、set_parameter；set_parameter 还需合法的 `parameter` 和 `value`。`aux_power_off` 提供模拟辅助电源关闭条件，只记录动作并停止本端通信。示例：
 
 ```json
 [

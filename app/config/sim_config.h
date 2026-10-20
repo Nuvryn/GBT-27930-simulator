@@ -56,6 +56,8 @@ typedef struct
     bool precharge_pass;
     bool ready;
     bool reconnect_allowed;
+    bool auto_aux_power_off;
+    uint32_t aux_power_off_delay_ms;
     uint32_t ready_delay_ms;
     uint32_t ready_timeout_ms;
     uint32_t stop_after_ms;

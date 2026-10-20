@@ -77,6 +77,8 @@ void sim_config_defaults(sim_config_t *out_config)
     out_config->precharge_pass = true;
     out_config->ready = true;
     out_config->reconnect_allowed = true;
+    out_config->auto_aux_power_off = true;
+    out_config->aux_power_off_delay_ms = 1000u;
     out_config->ready_delay_ms = 250u;
     out_config->ready_timeout_ms = 60000u;
     out_config->stop_after_ms = 5000u;
@@ -271,7 +273,7 @@ static bool sim_config_events(const cJSON *node, sim_config_t *config)
     {
         return false;
     }
-    const char *actions[] = {"stop", "pause", "resume", "unplug", "replug", "set_parameter"};
+    const char *actions[] = {"stop", "pause", "resume", "unplug", "replug", "set_parameter", "aux_power_off"};
     for (const cJSON *item = node->child; item != NULL; item = item->next)
     {
         if (!cJSON_IsObject(item))
@@ -363,6 +365,7 @@ static bool sim_config_scalar(const cJSON *item, sim_config_t *config)
     SIM_CONFIG_BOOL("precharge_pass", precharge_pass)
     SIM_CONFIG_BOOL("ready", ready)
     SIM_CONFIG_BOOL("reconnect_allowed", reconnect_allowed)
+    SIM_CONFIG_BOOL("auto_aux_power_off", auto_aux_power_off)
 #undef SIM_CONFIG_BOOL
 #define SIM_CONFIG_NUMBER(name, member, min, max)        \
     if (strcmp(key, name) == 0)                          \
@@ -376,6 +379,7 @@ static bool sim_config_scalar(const cJSON *item, sim_config_t *config)
     }
     SIM_CONFIG_NUMBER("speed", speed, 1, 100)
     SIM_CONFIG_NUMBER("ready_delay_ms", ready_delay_ms, 0, 3600000)
+    SIM_CONFIG_NUMBER("aux_power_off_delay_ms", aux_power_off_delay_ms, 0, 3600000)
     SIM_CONFIG_NUMBER("ready_timeout_ms", ready_timeout_ms, 1, 3600000)
     SIM_CONFIG_NUMBER("stop_after_ms", stop_after_ms, 0, 3600000)
     SIM_CONFIG_NUMBER("max_session_ms", max_session_ms, 1, 3600000)
