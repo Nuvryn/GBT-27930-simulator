@@ -217,3 +217,6 @@ Linux 使用 `posix_spawnp` 直接启动 `candump -L -d <接口>,0:0,#FFFFFFFF`�
 自动场景显式启用抓包并核对成功发送帧的 ID/字节/次数，包含最后的统计帧；另保留关闭抓包的用例。目标端无需 Python 或协议源码，抓包仅保存 candump 原始格式及诊断信息。
 
 自动运行器独立检查双方退出码、日志证据和正常状态顺序；不读取引擎内部状态。输出包含 PASS/FAIL/SKIP、错误说明、退出码和证据目录。支持 `--case <名称>`、`--build-dir <路径>`、`--real-time`。真实时间正常用例检查 DT 至少 10 ms、BCL/CCS 周期 50..100 ms；100 ms 上界用于暴露本机调度迟滞，不作为标准允许偏差。
+
+
+可选 Web 镜像：含 UI 构建使用 config/charger_web.json 或 config/bms_web.json，浏览器打开板端 HTTP 端口；虚拟屏幕无需实体显示设备。配置与两端口说明见 [ui_usage.md](ui_usage.md#web-屏幕镜像)。

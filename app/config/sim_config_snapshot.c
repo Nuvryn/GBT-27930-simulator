@@ -58,6 +58,14 @@ static void add_root(sim_config_builder_t *builder, cJSON *root, const sim_confi
 {
     cJSON *ui = add_container(builder, root, "ui", false);
     add_node(builder, ui, "enabled", cJSON_CreateBool(config->ui_enabled));
+    add_string(builder, ui, "backend", config->ui_backend);
+    cJSON *web = add_container(builder, ui, "web", false);
+    add_string(builder, web, "listen", config->ui_web_listen);
+    add_number(builder, web, "port", config->ui_web_port);
+    add_number(builder, web, "vnc_port", config->ui_web_vnc_port);
+    add_number(builder, web, "width", config->ui_web_width);
+    add_number(builder, web, "height", config->ui_web_height);
+    add_number(builder, web, "fps", config->ui_web_fps);
     add_string(builder, ui, "framebuffer", config->ui_framebuffer);
     add_string(builder, ui, "input_device", config->ui_input_device);
     add_number(builder, ui, "rotation", (int64_t) config->ui_rotation);

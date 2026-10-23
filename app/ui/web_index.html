@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GB/T 27930 Web UI</title><style>
+html,body{margin:0;width:100%;height:100%;background:#101c2d;color:#e6edf7;font:14px sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column}header{padding:8px;flex:none}#screen{flex:1;min-height:0;overflow:hidden}button{margin-left:12px}
+</style></head><body><header>GB/T 27930 <span id="status">连接中</span><button id="reconnect">重新连接</button></header><main id="screen"></main>
+<script type="module">
+import RFB from './core/rfb.js';
+const status=document.getElementById('status');
+const screen=document.getElementById('screen');
+let remote=null,timer=null;
+function connect(){
+ clearTimeout(timer); if(remote){remote.disconnect();return;}
+ status.textContent='连接中';
+ remote=new RFB(screen,`ws://${location.hostname}:$PORT/`);
+ remote.scaleViewport=true;remote.resizeSession=false;remote.viewOnly=false;
+ remote.addEventListener('connect',()=>{status.textContent='已连接';});
+ remote.addEventListener('disconnect',()=>{remote=null;status.textContent='已断开，正在重连';timer=setTimeout(connect,1000);});
+ remote.addEventListener('securityfailure',()=>{status.textContent='连接失败';});
+}
+document.getElementById('reconnect').addEventListener('click',connect);
+connect();
+</script></body></html>

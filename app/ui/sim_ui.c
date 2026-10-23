@@ -22,7 +22,7 @@ static void ui_thread(void *user)
     ui_background_priority();
     lv_init();
     void *display = NULL;
-    ui_display_options_t options = {.framebuffer = ui->config.ui_framebuffer, .input_device = ui->config.ui_input_device, .rotation = ui->config.ui_rotation};
+    ui_display_options_t options = {.backend = ui->config.ui_backend, .listen = ui->config.ui_web_listen, .web_port = ui->config.ui_web_port, .vnc_port = ui->config.ui_web_vnc_port, .width = ui->config.ui_web_width, .height = ui->config.ui_web_height, .fps = ui->config.ui_web_fps, .framebuffer = ui->config.ui_framebuffer, .input_device = ui->config.ui_input_device, .rotation = ui->config.ui_rotation};
     int rc = ui_display_open(&options, &display);
     sim_ui_view_t *view = rc == 0 ? sim_ui_view_create(ui->control, ui->path) : NULL;
     if (rc == 0 && view == NULL)

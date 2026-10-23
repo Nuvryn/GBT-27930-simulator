@@ -1,6 +1,8 @@
 /** @file ui_display.c @brief Official fbdev/evdev drivers; no hard-coded display resolution. */
 #include "support/ui_display.h"
 #include "lvgl/lvgl.h"
+#include "libvncserver_port.h"
+#include <string.h>
 #include <errno.h>
 #include <pthread.h>
 #include <sched.h>
@@ -8,7 +10,7 @@
 #include <linux/input.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-static bool s_input_failed;
+static bool s_input_failed, s_web;
 static void input_deleted(lv_event_t *event)
 {
     (void) event;
@@ -16,7 +18,7 @@ static void input_deleted(lv_event_t *event)
 }
 int ui_display_error(void)
 {
-    return s_input_failed ? -ENODEV : 0;
+    return s_web ? ui_web_error() : (s_input_failed ? -ENODEV : 0);
 }
 void ui_background_priority(void)
 {
@@ -27,6 +29,11 @@ int ui_display_open(const ui_display_options_t *options, void **display)
 {
     *display = NULL;
     s_input_failed = false;
+    s_web = options->backend != NULL && strcmp(options->backend, "web") == 0;
+    if (s_web)
+    {
+        return ui_web_open(options, display);
+    }
     lv_display_t *screen = lv_linux_fbdev_create();
     if (screen == NULL)
     {
@@ -74,6 +81,12 @@ int ui_display_open(const ui_display_options_t *options, void **display)
 void ui_display_close(void *display)
 {
     (void) display;
+    if (s_web)
+    {
+        ui_web_close();
+        s_web = false;
+        return;
+    }
     /* lv_deinit releases input devices first, then displays and backend-owned buffers. */
     lv_deinit();
 }

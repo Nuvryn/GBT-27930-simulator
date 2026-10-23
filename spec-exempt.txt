@@ -3,3 +3,5 @@ third_party/open_sae_j1939/**
 third_party/cjson/**
 third_party/easylogger/**
 third_party/lvgl/**
+third_party/libvncserver/**
+third_party/novnc/**

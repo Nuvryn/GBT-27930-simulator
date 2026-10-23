@@ -1,0 +1,27 @@
+{
+  "role": "charger",
+  "start_mode": "manual",
+  "version": 2015,
+  "file_log": true,
+  "candump": false,
+  "can_interface": "can0",
+  "stop_after_ms": 5000,
+  "parameters": {
+    "cml_max_voltage_mv": 750000,
+    "cml_min_voltage_mv": 200000,
+    "cml_max_current_ma": 200000,
+    "cml_min_current_ma": 0
+  },
+  "ui": {
+    "enabled": true,
+    "backend": "web",
+    "web": {
+      "listen": "0.0.0.0",
+      "port": 8080,
+      "vnc_port": 5900,
+      "width": 800,
+      "height": 480,
+      "fps": 10
+    }
+  }
+}

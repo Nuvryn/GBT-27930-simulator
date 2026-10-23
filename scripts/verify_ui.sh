@@ -33,5 +33,5 @@ if $sanitize; then
         -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined -no-pie"
     cmake --build build-ui-sanitize -j
     ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=halt_on_error=1 \
-        ctest --test-dir build-ui-sanitize --output-on-failure -R '^(sim_ui|sim_control|control_concurrency|ui_startup|ui_vcan)$'
+        ctest --test-dir build-ui-sanitize --output-on-failure -R '^(sim_ui|sim_control|control_concurrency|ui_startup|ui_vcan|web_ui|web_vcan)$'
 fi

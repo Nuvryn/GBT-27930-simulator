@@ -61,6 +61,49 @@ static bool sim_config_string(const cJSON *node, char *out, size_t capacity)
     memcpy(out, node->valuestring, strlen(node->valuestring) + 1u);
     return true;
 }
+static bool sim_config_web(const cJSON *node, sim_config_t *config)
+{
+    if (!cJSON_IsObject(node))
+    {
+        return false;
+    }
+    for (const cJSON *item = node->child; item != NULL; item = item->next)
+    {
+        int64_t value;
+        if (strcmp(item->string, "listen") == 0)
+        {
+            if (!sim_config_string(item, config->ui_web_listen, sizeof(config->ui_web_listen)) || config->ui_web_listen[0] == '\0')
+            {
+                return false;
+            }
+        }
+        else if (strcmp(item->string, "port") == 0 && sim_config_integer(item, 1, 65535, &value))
+        {
+            config->ui_web_port = (unsigned) value;
+        }
+        else if (strcmp(item->string, "vnc_port") == 0 && sim_config_integer(item, 1, 65535, &value))
+        {
+            config->ui_web_vnc_port = (unsigned) value;
+        }
+        else if (strcmp(item->string, "width") == 0 && sim_config_integer(item, 480, 1920, &value))
+        {
+            config->ui_web_width = (unsigned) value;
+        }
+        else if (strcmp(item->string, "height") == 0 && sim_config_integer(item, 272, 1080, &value))
+        {
+            config->ui_web_height = (unsigned) value;
+        }
+        else if (strcmp(item->string, "fps") == 0 && sim_config_integer(item, 1, 30, &value))
+        {
+            config->ui_web_fps = (unsigned) value;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    return config->ui_web_port != config->ui_web_vnc_port;
+}
 static bool sim_config_ui(const cJSON *node, sim_config_t *config)
 {
     if (!cJSON_IsObject(node))
@@ -73,6 +116,21 @@ static bool sim_config_ui(const cJSON *node, sim_config_t *config)
         if (strcmp(item->string, "enabled") == 0 && cJSON_IsBool(item))
         {
             config->ui_enabled = cJSON_IsTrue(item);
+        }
+        else if (strcmp(item->string, "backend") == 0)
+        {
+            if (!sim_config_string(item, config->ui_backend, sizeof(config->ui_backend)) ||
+                (strcmp(config->ui_backend, "fbdev") != 0 && strcmp(config->ui_backend, "web") != 0))
+            {
+                return false;
+            }
+        }
+        else if (strcmp(item->string, "web") == 0)
+        {
+            if (!sim_config_web(item, config))
+            {
+                return false;
+            }
         }
         else if (strcmp(item->string, "framebuffer") == 0)
         {
@@ -119,6 +177,13 @@ int sim_config_validate_values(const sim_config_t *config)
 void sim_config_defaults(sim_config_t *out_config)
 {
     memset(out_config, 0, sizeof(*out_config));
+    memcpy(out_config->ui_backend, "fbdev", 6u);
+    memcpy(out_config->ui_web_listen, "0.0.0.0", 8u);
+    out_config->ui_web_port = 8080u;
+    out_config->ui_web_vnc_port = 5900u;
+    out_config->ui_web_width = 800u;
+    out_config->ui_web_height = 480u;
+    out_config->ui_web_fps = 10u;
     memcpy(out_config->ui_framebuffer, "/dev/fb0", 9u);
     out_config->charger = true;
     out_config->version = 2015u;
@@ -679,9 +744,9 @@ int sim_config_parse(const char *text, sim_config_t *out_config, char *out_error
     {
         rc = sim_config_error(out_error, error_capacity, "cross-field constraints");
     }
-    if (rc == 0 && config.ui_enabled && (!config.manual_start || config.ui_input_device[0] == '\0'))
+    if (rc == 0 && config.ui_enabled && (!config.manual_start || (strcmp(config.ui_backend, "fbdev") == 0 && config.ui_input_device[0] == '\0') || (strcmp(config.ui_backend, "web") == 0 && config.ui_rotation != 0u)))
     {
-        rc = sim_config_error(out_error, error_capacity, "ui requires manual mode and input_device");
+        rc = sim_config_error(out_error, error_capacity, "ui requires manual mode; fbdev needs input_device; web needs rotation=0");
     }
     cJSON_Delete(root);
     if (rc == 0 && config.manual_start)

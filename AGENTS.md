@@ -67,8 +67,8 @@ main 保持稳定可用；功能开发、缺陷修复及规范更新均从 main 
 ## 实现约束补充
 
 - 硬件动作仅输出日志，测量及自检、预充、准备条件来自配置或事件；不得以日志代替条件判断。
-- 已确认使用 Open-SAE-J1939、cJSON、EasyLogger，以及可选 UI 的 LVGL v9.6.0 及中文界面字体思源黑体（Source Han Sans SC 2.004R）；新增开源依赖必须先征得用户同意。
+- 已确认使用 Open-SAE-J1939、cJSON、EasyLogger，以及可选 UI 的 LVGL v9.6.0 及中文界面字体思源黑体（Source Han Sans SC 2.004R），以及 Web 镜像的 LibVNCServer 0.9.15 和 noVNC 1.7.0；新增开源依赖必须先征得用户同意。
 - 当前运行目标为 ARM Linux；Zephyr 只验证骨架。配置、日志和关键资源初始化失败返回非零。
 - 代码注释英文，文档中文；自有 C/H 采用 lower_snake_case，并对本次修改运行 clang-format。
-- UI 运行尺寸读取系统显示设备，不固定为 800×480，不开发或修改 BSP；UI 用法见 docs/ui_usage.md。
+- 实体 UI 运行尺寸读取系统显示设备；Web UI 使用独立配置的虚拟尺寸，不固定实体屏幕为 800×480，不开发或修改 BSP；UI 用法见 docs/ui_usage.md。
 - 最新用法和测试边界见 docs/simulator_usage.md、docs/validation_matrix.md。

@@ -71,7 +71,7 @@
 | `hal/` | `backends/hal/{linux,zephyr}` | `linux` = 平台名 |
 | `support/` | `backends/support/{linux,zephyr}` | 补充层（项目自建） |
 
-补充契约新增 `config_store.h`（Linux 原子保存 / Zephyr ENOSYS）与 `ui_display.h`（可选 Linux fbdev/evdev / Zephyr ENOSYS）；契约只使用路径、旋转等纯值，不依赖 app 或 LVGL 类型，平台后端由 CMake 选取。
+补充契约新增 `config_store.h`（Linux 原子保存 / Zephyr ENOSYS）与 `ui_display.h`（可选 Linux fbdev/evdev 或内存 Web 镜像 / Zephyr ENOSYS）；契约只使用路径、旋转、后端名、端口及虚拟尺寸等纯值，不依赖 app 或 LVGL 类型，平台后端由 CMake 选取。
 
 补充契约还包括 `log_sink.h`（日志工作线程/文件）及 `can_capture.h`（外部 CAN 抓包生命周期）。Linux 使用平台线程与直接 spawn 管理，Zephyr 未实现的启动操作返回 ENOSYS；应用不感知进程和文件实现。
 

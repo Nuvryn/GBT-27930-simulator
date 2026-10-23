@@ -43,6 +43,8 @@ typedef struct
     bool charger;
     bool manual_start;
     bool ui_enabled;
+    char ui_backend[8], ui_web_listen[16];
+    unsigned ui_web_port, ui_web_vnc_port, ui_web_width, ui_web_height, ui_web_fps;
     char ui_framebuffer[256];
     char ui_input_device[256];
     unsigned ui_rotation;

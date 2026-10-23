@@ -45,6 +45,14 @@ static void validate(void)
     CHECK(sim_config_parse("{\"role\":\"charger\",\"version\":2015,\"ui\":{\"enabled\":true}}", &config, error, sizeof(error)) != 0);
     CHECK(sim_config_parse("{\"role\":\"charger\",\"version\":2015,\"ui\":{\"rotation\":91}}", &config, error, sizeof(error)) != 0);
     CHECK(sim_config_parse("{\"role\":\"charger\",\"version\":2015,\"ui\":{\"width\":800}}", &config, error, sizeof(error)) != 0);
+    CHECK(sim_config_parse("{\"role\":\"charger\",\"version\":2015,\"start_mode\":\"manual\",\"ui\":{\"enabled\":true,\"backend\":\"web\",\"web\":{\"width\":480,\"height\":272,\"fps\":30}}}", &config, error, sizeof(error)) == 0);
+    CHECK(strcmp(config.ui_backend, "web") == 0 && config.ui_web_width == 480u && config.ui_web_height == 272u && config.ui_web_fps == 30u);
+    CHECK(sim_config_parse("{\"role\":\"charger\",\"version\":2015,\"ui\":{\"web\":{\"width\":479}}}", &config, error, sizeof(error)) != 0);
+    CHECK(sim_config_parse("{\"role\":\"charger\",\"version\":2015,\"ui\":{\"web\":{\"height\":1081}}}", &config, error, sizeof(error)) != 0);
+    CHECK(sim_config_parse("{\"role\":\"charger\",\"version\":2015,\"ui\":{\"web\":{\"fps\":0}}}", &config, error, sizeof(error)) != 0);
+    CHECK(sim_config_parse("{\"role\":\"charger\",\"version\":2015,\"ui\":{\"web\":{\"port\":5900,\"vnc_port\":5900}}}", &config, error, sizeof(error)) != 0);
+    CHECK(sim_config_parse("{\"role\":\"charger\",\"version\":2015,\"ui\":{\"web\":{\"port\":65536}}}", &config, error, sizeof(error)) != 0);
+    CHECK(sim_config_parse("{\"role\":\"charger\",\"version\":2015,\"ui\":{\"web\":{\"unknown\":1}}}", &config, error, sizeof(error)) != 0);
     for (size_t idx = 0u; gbt27930_field(idx) != NULL; idx++)
     {
         const gbt27930_field_t *field = gbt27930_field(idx);
@@ -95,6 +103,9 @@ static void commands_and_save(void)
     sim_config_t config;
     sim_config_defaults(&config);
     config.manual_start = true;
+    strcpy(config.ui_backend, "web");
+    config.ui_web_width = 1024u;
+    config.ui_web_port = 8123u;
     config.retries = 0u;
     config.reconnect_allowed = false;
     config.fault_count = 1u;
@@ -138,6 +149,7 @@ static void commands_and_save(void)
     sim_config_t restored;
     char error[256];
     CHECK(sim_config_load(path, &restored, error, sizeof(error)) == 0);
+    CHECK(strcmp(restored.ui_backend, "web") == 0 && restored.ui_web_width == 1024u && restored.ui_web_port == 8123u);
     CHECK(restored.fault_count == 1u && restored.faults[0].count == 2u && strcmp(restored.faults[0].message, "BMV") == 0);
     CHECK(restored.event_count == 1u && restored.events[0].value == 50000 && strcmp(restored.events[0].parameter, "ccs_current_ma") == 0);
     CHECK(memcmp(restored.values.manufacturer, config.values.manufacturer, 4u) == 0 && restored.values.cell_count == config.values.cell_count);

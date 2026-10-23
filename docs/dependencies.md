@@ -33,3 +33,12 @@ LVGL 导入 src、include、libs 及根公共头文件、许可证和配置模�
 ## UI 中文字体
 
 用户确认采用思源黑体 Source Han Sans SC 2.004R，SIL OFL 1.1 许可。仅保存界面使用的派生字形源码、字符清单及许可证；由官方 lv_font_conv 1.5.3（MIT，仅开发工具）生成。来源、原始字体哈希及生成方法见 third_party/source_han_sans/README.md。
+
+
+## Web 镜像依赖
+
+用户确认采用 LibVNCServer 0.9.15（提交 `9b54b1ec32731bd23158ca014dc18014db4194c3`，GPL-2.0-or-later）与 noVNC 1.7.0（提交 `63107bd06d9e1f6136ff21aeda8cd62cbf0d433e`，主要 MPL-2.0；附带组件许可证见各目录）。固定源码子集原样存放于 third_party/libvncserver 和 third_party/novnc，许可证随库保存，文件哈希进入 dependencies-manifest.json。
+
+`cmake/web_ui.cmake` 只构建所需 C 服务端及内置密码摘要/WebSocket代码，关闭可选 TLS、JPEG、zlib 和内部线程依赖；由 Linux 适配层提供独立网络线程。上游 HTTP 源文件单独通过编译宏把 fopen 映射到只读内嵌资源查找，继续复用原 HTTP 解析器，不修改固定源码、不读取任意板端文件。`scripts/embed_web_assets.py` 使用 Python 标准库在构建时打包本地网页和 noVNC JS，无运行时脚本需求。
+
+仅 SIM_UI=ON 链接这些组件。LibVNCServer 的 GPL 要求适用于链接程序的分发，noVNC 与附带组件的许可声明须保留。精确来源和哈希以清单为准。

@@ -57,4 +57,4 @@ Linux `args_parse` 遇到 `--version` 设置 `show_version` 并返回 0，由正
 
 `console_input_poll()` 单消费者调用：0 无空行，1 Enter，2 EOF，负数为错误。Linux 使用 poll/read 读取规范终端或管道，不切换终端模式；非空行忽略，不提供命令解析。Zephyr 返回 `-ENOSYS`，当前只编译骨架。`console_termination_requested()` 区分 SIGTERM 的进程退出请求和 SIGINT 的会话中止；前者一旦置位持续到退出。以上接口由协议线程调用，信号回调仍仅设置通知标记。
 
-UI 显示契约仅接收设备路径与旋转的纯值选项，不依赖 app 配置或暴露 LVGL 类型；Linux 使用实际系统分辨率及 evdev 坐标范围。LVGL 对象由 UI 线程独占，平台后端不依赖应用层。配置保存接口只负责文件原子替换，cJSON 序列化及回读校验在应用工作线程完成。
+UI 显示契约接收后端名、设备路径、旋转及 Web 端口/虚拟尺寸等纯值选项，不依赖 app 配置或暴露 LVGL 类型；Linux fbdev 使用实际系统分辨率及 evdev 坐标范围，Web 使用配置的内存画布和网络指针队列。LVGL 对象由 UI 线程独占，平台后端不依赖应用层。配置保存接口只负责文件原子替换，cJSON 序列化及回读校验在应用工作线程完成。
