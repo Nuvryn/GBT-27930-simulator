@@ -23,4 +23,8 @@ void sim_session_stop(sim_session_t *session, uint32_t now_ms);
 bool sim_session_active(const sim_session_t *session);
 /** First underlying CAN send failure, zero if none; reset on each start. */
 int sim_session_io_error(const sim_session_t *session);
+/** Caller is the protocol thread. Only values may change; lifecycle resources stay fixed. */
+int sim_session_values(sim_session_t *session, const gbt27930_values_t *values);
+int sim_session_manual_fault(sim_session_t *session, const sim_fault_rule_t *rule);
+void sim_session_status(sim_session_t *session, sim_status_t *status);
 #endif

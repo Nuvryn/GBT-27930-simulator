@@ -42,6 +42,10 @@ typedef struct
 {
     bool charger;
     bool manual_start;
+    bool ui_enabled;
+    char ui_framebuffer[256];
+    char ui_input_device[256];
+    unsigned ui_rotation;
     unsigned version;
     char can_interface[16];
     uint8_t source;
@@ -82,6 +86,8 @@ typedef struct
     sim_event_t events[SIM_CONFIG_EVENT_CAPACITY];
     size_t event_count;
 } sim_config_t;
+int sim_config_validate_fault(const sim_fault_rule_t *rule);
+int sim_config_validate_values(const sim_config_t *config);
 /** Defaults are usable values; role/version still required in JSON. */
 void sim_config_defaults(sim_config_t *out_config);
 /** Parse strict JSON (unknown/duplicate keys rejected). Error buffer required, >=1 byte. */

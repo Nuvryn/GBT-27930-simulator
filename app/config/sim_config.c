@@ -61,9 +61,65 @@ static bool sim_config_string(const cJSON *node, char *out, size_t capacity)
     memcpy(out, node->valuestring, strlen(node->valuestring) + 1u);
     return true;
 }
+static bool sim_config_ui(const cJSON *node, sim_config_t *config)
+{
+    if (!cJSON_IsObject(node))
+    {
+        return false;
+    }
+    for (const cJSON *item = node->child; item != NULL; item = item->next)
+    {
+        int64_t rotation;
+        if (strcmp(item->string, "enabled") == 0 && cJSON_IsBool(item))
+        {
+            config->ui_enabled = cJSON_IsTrue(item);
+        }
+        else if (strcmp(item->string, "framebuffer") == 0)
+        {
+            if (!sim_config_string(item, config->ui_framebuffer, sizeof(config->ui_framebuffer)) || config->ui_framebuffer[0] == '\0')
+            {
+                return false;
+            }
+        }
+        else if (strcmp(item->string, "input_device") == 0)
+        {
+            if (!sim_config_string(item, config->ui_input_device, sizeof(config->ui_input_device)))
+            {
+                return false;
+            }
+        }
+        else if (strcmp(item->string, "rotation") == 0 && sim_config_integer(item, 0, 270, &rotation) && rotation % 90 == 0)
+        {
+            config->ui_rotation = (unsigned) rotation;
+        }
+        else
+        {
+            return false;
+        }
+    }
+    return true;
+}
+int sim_config_validate_values(const sim_config_t *config)
+{
+    gbt27930_values_t checked = config->values;
+    for (size_t idx = 0u; gbt27930_field(idx) != NULL; idx++)
+    {
+        if (gbt27930_set(&checked, gbt27930_field(idx)->key, config->values.field[idx]) != 0)
+        {
+            return -ERANGE;
+        }
+    }
+    if (gbt27930_get(&checked, "cml_min_voltage_mv") > gbt27930_get(&checked, "cml_max_voltage_mv") ||
+        gbt27930_get(&checked, "cml_min_current_ma") > gbt27930_get(&checked, "cml_max_current_ma"))
+    {
+        return -ERANGE;
+    }
+    return 0;
+}
 void sim_config_defaults(sim_config_t *out_config)
 {
     memset(out_config, 0, sizeof(*out_config));
+    memcpy(out_config->ui_framebuffer, "/dev/fb0", 9u);
     out_config->charger = true;
     out_config->version = 2015u;
     out_config->source = 0x56u;
@@ -142,11 +198,11 @@ static bool sim_config_messages(const cJSON *node, sim_config_t *config)
             {
                 config->period_ms[message] = (uint32_t) value;
             }
-            else if (strcmp(field->string, "timeout_ms") == 0 && sim_config_integer(field, 1, 3600000, &value))
+            else if (strcmp(field->string, "timeout_ms") == 0 && sim_config_integer(field, gbt27930_descriptor(message)->timeout_ms == 0u ? 0 : 1, 3600000, &value))
             {
                 config->timeout_ms[message] = (uint32_t) value;
             }
-            else if (strcmp(field->string, "first_timeout_ms") == 0 && sim_config_integer(field, 1, 3600000, &value))
+            else if (strcmp(field->string, "first_timeout_ms") == 0 && sim_config_integer(field, gbt27930_descriptor(message)->timeout_ms == 0u ? 0 : 1, 3600000, &value))
             {
                 config->first_timeout_ms[message] = (uint32_t) value;
             }
@@ -170,6 +226,17 @@ static bool sim_config_stage(const char *stage)
         }
     }
     return false;
+}
+int sim_config_validate_fault(const sim_fault_rule_t *rule)
+{
+    if (rule == NULL || memchr(rule->stage, 0, sizeof(rule->stage)) == NULL || memchr(rule->message, 0, sizeof(rule->message)) == NULL ||
+        !sim_config_stage(rule->stage) || (gbt27930_find_message(rule->message) == GBT27930_MESSAGE_COUNT && strcmp(rule->message, "TP_CM") != 0 && strcmp(rule->message, "TP_DT") != 0) ||
+        (unsigned) rule->action > SIM_FAULT_ID || rule->after_ms > 3600000u || rule->duration_ms > 3600000u || rule->delay_ms == 0u || rule->delay_ms > 3600000u || rule->count > 1000000u || rule->byte >= 1785u || rule->value > 0x1FFFFFFFu ||
+        (rule->action == SIM_FAULT_LENGTH && rule->value > 8u) || (rule->action == SIM_FAULT_CORRUPT && rule->value > 255u))
+    {
+        return -EINVAL;
+    }
+    return 0;
 }
 static bool sim_config_fault(const cJSON *node, sim_fault_rule_t *rule)
 {
@@ -549,7 +616,11 @@ int sim_config_parse(const char *text, sim_config_t *out_config, char *out_error
         {
             continue;
         }
-        if (strcmp(key, "parameters") == 0)
+        if (strcmp(key, "ui") == 0)
+        {
+            valid = sim_config_ui(item, &config);
+        }
+        else if (strcmp(key, "parameters") == 0)
         {
             valid = sim_config_parameters(item, &config);
         }
@@ -607,6 +678,10 @@ int sim_config_parse(const char *text, sim_config_t *out_config, char *out_error
                        gbt27930_get(&config.values, "cml_min_current_ma") > gbt27930_get(&config.values, "cml_max_current_ma")))
     {
         rc = sim_config_error(out_error, error_capacity, "cross-field constraints");
+    }
+    if (rc == 0 && config.ui_enabled && (!config.manual_start || config.ui_input_device[0] == '\0'))
+    {
+        rc = sim_config_error(out_error, error_capacity, "ui requires manual mode and input_device");
     }
     cJSON_Delete(root);
     if (rc == 0 && config.manual_start)

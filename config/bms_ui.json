@@ -1,0 +1,22 @@
+{
+  "role": "bms",
+  "start_mode": "manual",
+  "version": 2015,
+  "file_log": true,
+  "candump": false,
+  "can_interface": "can0",
+  "stop_after_ms": 0,
+  "parameters": {
+    "bcp_max_voltage_mv": 450000,
+    "bcp_max_current_ma": 100000,
+    "bcl_voltage_mv": 420000,
+    "bcl_current_ma": 100000,
+    "bcl_mode": 2
+  },
+  "ui": {
+    "enabled": true,
+    "framebuffer": "/dev/fb0",
+    "input_device": "/dev/input/event1",
+    "rotation": 0
+  }
+}

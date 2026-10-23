@@ -14,4 +14,7 @@ int sim_fault_apply(sim_fault_t *fault, bool receive, const char *message, const
 int sim_fault_tick(sim_fault_t *fault, uint32_t now_ms);
 /** Clear pending delayed frames at restart; retain evidence counters. */
 void sim_fault_cancel(sim_fault_t *fault);
+/** Replace one temporary rule; NULL disables and cancels only its pending tasks. */
+int sim_fault_manual(sim_fault_t *fault, const sim_fault_rule_t *rule, uint32_t now_ms);
+void sim_fault_manual_status(const sim_fault_t *fault, bool *enabled, uint32_t *hits);
 #endif

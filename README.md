@@ -11,9 +11,9 @@ Linux 支持 `gbt27930_simulator --version` 查询软件版本、UTC 构建时�
 
 继电器、接触器、辅助电源、电子锁及采集操作仅记录模拟动作；条件判断与测量值来自配置和场景事件。运行平台为 ARM Linux，Zephyr 仅保留编译骨架。
 
-依赖使用已经确认的 Open-SAE-J1939、cJSON、EasyLogger 固定源码；构建无需下载。新增库必须先征得使用者同意。来源、许可和哈希校验见 [依赖说明](docs/dependencies.md)。
+依赖使用已经确认的 Open-SAE-J1939、cJSON、EasyLogger，以及可选 LVGL 固定源码；构建无需下载。新增库必须先征得使用者同意。来源、许可和哈希校验见 [依赖说明](docs/dependencies.md)。
 
-已确认采用 LVGL v9.6.0 的触屏 UI 尚未实施，功能范围、充电流程图及分阶段验收见 [UI 开发计划](docs/ui-development-plan.md)。
+可选 LVGL v9.6.0 触屏 UI 提供充电流程图、参数编辑与保存、开始/停止、手动注入和实时日志；分辨率读取系统显示设备。构建及操作见 [UI 使用说明](docs/ui_usage.md)，范围与验收见 [UI 开发计划](docs/ui-development-plan.md)。
 
 ## 构建与运行
 

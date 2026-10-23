@@ -61,7 +61,7 @@ def scenarios():
              bms={"faults": [dict(stage="charging", message="BSM", action="drop", after_ms=300, count=0)]}, charger_evidence=["LOCKOUT"]),
         dict(name="pause_resume_2023", version=2023, expect=0,
              bms={"events": [dict(stage="charging", action="pause", after_ms=300), dict(stage="charging", action="resume", after_ms=700)]},
-             charger_evidence=["模拟充电暂停", "模拟充电恢复"]),
+             charger_evidence=["Simulated charging paused", "Simulated charging resumed"]),
         dict(name="foreign_bcl_id", version=2015, expect=1,
              charger={"messages": {"BCL": {"timeout_ms": 300}}},
              bms={"faults": [dict(stage="charging", message="BCL", action="id", value=0x181056F3, after_ms=200, count=0)]},

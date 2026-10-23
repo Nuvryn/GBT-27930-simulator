@@ -1,5 +1,6 @@
 /** @file sim_main.c @brief Simulator lifecycle; one process and protocol thread per role. */
 #include "config/sim_config.h"
+#include "ui/sim_ui.h"
 #include "simulator/sim_session.h"
 #include "simulator/sim_build_info.h"
 #include "logging/sim_log.h"
@@ -11,6 +12,7 @@
 #include "support/log_retention.h"
 #include "osal/osal.h"
 #include <signal.h>
+#include <errno.h>
 #include <stdio.h>
 
 /* Only a signal notification; no thread synchronization uses volatile. */
@@ -70,9 +72,9 @@ static int sim_main_startup(const sim_config_t *config, const args_t *args)
     }
     return rc;
 }
-static void sim_main_idle(bool charger)
+static void sim_main_idle(bool charger, bool ui)
 {
-    sim_log_event("IDLE", "%s", charger ? "Press Enter to start charging" : "Waiting for peer CHM");
+    sim_log_event("IDLE", "%s", charger ? (ui ? "Use Start charging on screen" : "Press Enter to start charging") : "Waiting for peer CHM");
     console_flush();
 }
 /** All resources are initialized once and released in reverse order. */
@@ -85,6 +87,11 @@ static int sim_main_run(const args_t *args)
     if (sim_config_load(args->config_src, &config, error, sizeof(error)) != 0)
     {
         console_printf("%s\n", error);
+        return 1;
+    }
+    if (config.ui_enabled && !sim_ui_available())
+    {
+        console_printf("UI requested but SIM_UI is disabled in this build\n");
         return 1;
     }
     if (args->speed != 0u)
@@ -168,6 +175,24 @@ static int sim_main_run(const args_t *args)
         (void) sim_main_log_close();
         return 1;
     }
+    sim_control_t *control = config.ui_enabled ? sim_control_create(&config, args->config_src) : NULL;
+    sim_ui_t *ui = NULL;
+    rc = config.ui_enabled && control == NULL ? -ENOMEM : sim_ui_open(control, &config, args->config_src, &ui);
+    if (rc != 0)
+    {
+        sim_log_event("ERROR", "UI initialization failed rc=%d", rc);
+        sim_control_destroy(control);
+        sim_session_destroy(session);
+        if (config.candump)
+        {
+            (void) can_capture_stop();
+        }
+        console_set_stop_handler(NULL);
+        can_bus_close();
+        (void) sim_main_log_close();
+        return 1;
+    }
+    sim_log_observe(control != NULL ? sim_control_log : NULL, control);
     uint32_t start_ms = osal_get_tick_ms();
     int result = config.manual_start ? 0 : sim_session_start(session, 0u);
     bool exiting = false, failed = false;
@@ -176,7 +201,7 @@ static int sim_main_run(const args_t *args)
         sim_log_event("READY", "Startup complete");
         if (config.manual_start)
         {
-            sim_main_idle(config.charger);
+            sim_main_idle(config.charger, config.ui_enabled);
         }
     }
     while (result == 0)
@@ -194,7 +219,7 @@ static int sim_main_run(const args_t *args)
             result = failed ? -1 : 1;
             break;
         }
-        if (config.manual_start && config.charger && !exiting)
+        if (config.manual_start && config.charger && !config.ui_enabled && !exiting)
         {
             int input = console_input_poll();
             if (input < 0 || input == 2)
@@ -221,6 +246,14 @@ static int sim_main_run(const args_t *args)
                     break;
                 }
             }
+        }
+        if (!exiting)
+        {
+            result = sim_control_step(control, session, now_ms);
+        }
+        if (result != 0)
+        {
+            break;
         }
         for (unsigned drained = 0u; drained < 128u; drained++)
         {
@@ -255,9 +288,15 @@ static int sim_main_run(const args_t *args)
                 }
                 else
                 {
-                    sim_main_idle(config.charger);
+                    sim_main_idle(config.charger, config.ui_enabled);
                 }
             }
+        }
+        rc = sim_control_publish(control, session);
+        if (rc != 0 || sim_ui_error(ui) != 0 || sim_control_error(control) != 0)
+        {
+            result = -1;
+            sim_log_event("ERROR", "UI or configuration worker failed rc=%d", rc);
         }
         if (sim_session_io_error(session) != 0)
         {
@@ -288,7 +327,14 @@ static int sim_main_run(const args_t *args)
             result = -1;
         }
     }
+    sim_ui_close(ui);
+    if (sim_control_error(control) != 0)
+    {
+        result = -1;
+    }
     sim_log_event("RESULT", "status=%s code=%d", result == 1 ? "PASS" : "FAIL", result);
+    sim_log_observe(NULL, NULL);
+    sim_control_destroy(control);
     console_set_stop_handler(NULL);
     sim_session_destroy(session);
     can_bus_close();

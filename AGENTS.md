@@ -63,7 +63,8 @@ SIM_SPEED=10 ./tests/test_runner.sh    # 当前 29 个场景，每场景两个�
 ## 实现约束补充
 
 - 硬件动作仅输出日志，测量及自检、预充、准备条件来自配置或事件；不得以日志代替条件判断。
-- 已确认使用 Open-SAE-J1939、cJSON、EasyLogger；新增开源依赖必须先征得用户同意。
+- 已确认使用 Open-SAE-J1939、cJSON、EasyLogger，以及可选 UI 的 LVGL v9.6.0；新增开源依赖必须先征得用户同意。
 - 当前运行目标为 ARM Linux；Zephyr 只验证骨架。配置、日志和关键资源初始化失败返回非零。
 - 代码注释英文，文档中文；自有 C/H 采用 lower_snake_case，并对本次修改运行 clang-format。
+- UI 运行尺寸读取系统显示设备，不固定为 800×480，不开发或修改 BSP；UI 用法见 docs/ui_usage.md。
 - 最新用法和测试边界见 docs/simulator_usage.md、docs/validation_matrix.md。

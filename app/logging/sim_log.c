@@ -7,7 +7,14 @@
 #include <stdio.h>
 #include <stdatomic.h>
 #include <errno.h>
-static uint32_t s_sim_log_time_ms;
+static atomic_uint s_sim_log_time_ms;
+static sim_log_observer_t s_observer;
+static void *s_observer_user;
+void sim_log_observe(sim_log_observer_t observer, void *user)
+{
+    s_observer = observer;
+    s_observer_user = user;
+}
 static atomic_size_t s_sim_log_pending;
 /** Compiled upstream entry point; checked wrapper prevents silent partial records. */
 extern void elog_async_output_upstream(uint8_t level, const char *log, size_t size);
@@ -87,6 +94,10 @@ void sim_log_event(const char *tag, const char *format, ...)
     va_start(args, format);
     (void) vsnprintf(message, sizeof(message), format, args);
     va_end(args);
+    if (s_observer != NULL)
+    {
+        s_observer(s_observer_user, tag, message, atomic_load(&s_sim_log_time_ms));
+    }
     elog_info(tag, "%s", message);
 }
 int sim_log_detail(const char *format, ...)

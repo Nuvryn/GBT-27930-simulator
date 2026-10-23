@@ -1,5 +1,28 @@
 # 验证清单与交付边界
 
+## LVGL UI 首版专项（2026-10-23）
+
+固定 LVGL v9.6.0，依赖校验包含 1515 个上游文件。UI 关闭不链接 LVGL（符号检查），UI 开启要求 manual 模式；无 UI 构建却请求启用、设备初始化失败均非零退出。Linux 官方 fbdev 后端读取系统分辨率、格式和行跨度，evdev 读取输入坐标范围；本轮不开发或修改 BSP。
+
+| 检查 | 结果 | 证据 |
+|---|---|---|
+| Linux 无 UI 完整回归（20 项） | PASS | build/Testing/Temporary/LastTest.log；含原有 29 个软件场景 |
+| Linux UI 完整回归（22 项） | PASS | scripts/verify_ui.sh；界面新增用例及原协议基线 |
+| 实际 LVGL 控件/指针输入 | PASS | sim_ui；800×480、480×272；build-ui/ui_*.ppm |
+| 两版双角色重复、主动停止、Apply、暂停恢复及失败轨迹 | PASS | sim_ui；每组合两轮，核对状态/修订/参数及错误报文 |
+| UI 持续刷新时的真实时间双进程 SocketCAN | PASS | ui_vcan；build-ui/ui_vcan_*/report.json；两版各两轮，配置证据完整，DT ≥10 ms，BCL/CCS 周期 50..100 ms |
+| 有界控制、保存往返、精确数值和临时规则归属 | PASS | sim_control、sim_ui；另验证非法数组/非本端字段拒绝、旧会话停止拒绝、待机预置首帧注入 |
+| 并发快照/日志和请求反馈 | PASS | control_concurrency；真实线程下 2000 个有序请求及结果 |
+| ASan/UBSan | PASS | 无 UI 12 项、UI 5 项；后者包括实际 UI 线程和双进程对跑 |
+| ARM Linux UI=OFF/ON | PASS | build-armhf、build-armhf-ui；ELF32 ARM EABI5，compile_commands.json 均导出 |
+| Zephyr OFF 骨架及 ON 拒绝 | PASS | build-zephyr、build/zephyr_ui_rejected.log；不表示 Zephyr UI 移植完成 |
+| 真实屏幕、触摸及旋转 | SKIP | 未连接显示及输入设备；离屏测试不替代设备验收 |
+| ARM 板运行、真实桩/BMS 对接 | SKIP | 未连接实物 |
+
+ui_vcan 使用正式入口及 UI/协议/日志线程，只在测试可执行文件中替换为内存显示，正式程序仍走系统显示设备。一次挂载盘日志轮询曾遇 WSL ENODATA，已仅对实时读取中的这一临时错误继续轮询；未延长协议超时或放宽时序、退出码、证据判据。人工查看了实际 LVGL 渲染图像，修正小屏流程卡片收缩问题。
+
+操作及部署见 [UI 使用说明](ui_usage.md)。下方各专项为其对应阶段的历史验证记录，测试数量以本节为最新口径。
+
 ## Linux 手动重复会话专项（2026-10-23）
 
 新增 `sim_session` 可控时间测试：两种版本各连续三轮、空闲等待超过会话时限仍不发送、不接受错误长度/对端 CHM、重复 start 拒绝、失败后计时重置及旧 CHM 连续流抑制。配置测试覆盖省略模式仍为 auto、manual 禁用自动重连、非法模式拒绝。

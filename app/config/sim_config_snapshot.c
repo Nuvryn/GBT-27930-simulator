@@ -56,6 +56,11 @@ static void add_fixed_string(sim_config_builder_t *builder, cJSON *root, const c
 }
 static void add_root(sim_config_builder_t *builder, cJSON *root, const sim_config_t *config)
 {
+    cJSON *ui = add_container(builder, root, "ui", false);
+    add_node(builder, ui, "enabled", cJSON_CreateBool(config->ui_enabled));
+    add_string(builder, ui, "framebuffer", config->ui_framebuffer);
+    add_string(builder, ui, "input_device", config->ui_input_device);
+    add_number(builder, ui, "rotation", (int64_t) config->ui_rotation);
     add_string(builder, root, "role", config->charger ? "charger" : "bms");
     add_string(builder, root, "start_mode", config->manual_start ? "manual" : "auto");
     add_string(builder, root, "can_interface", config->can_interface);

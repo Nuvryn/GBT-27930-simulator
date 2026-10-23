@@ -2,6 +2,7 @@
 #ifndef APP_SIMULATOR_SIM_ENGINE_H
 #define APP_SIMULATOR_SIM_ENGINE_H
 #include "config/sim_config.h"
+#include "simulator/sim_status.h"
 #include "common/sim_frame.h"
 typedef struct sim_engine_s sim_engine_t;
 typedef int (*sim_engine_send_cb_t)(void *cb_user, const sim_frame_t *frame);
@@ -14,4 +15,7 @@ int sim_engine_receive(sim_engine_t *engine, const sim_frame_t *frame, uint32_t 
 int sim_engine_tick(sim_engine_t *engine, uint32_t now_ms);
 /** Operator stop request; no hardware actions. */
 void sim_engine_stop(sim_engine_t *engine, uint32_t now_ms);
+/** Protocol-thread only; snapshot owns every value and preserves bounded transitions. */
+void sim_engine_status(const sim_engine_t *engine, sim_status_t *status);
+int sim_engine_manual_fault(sim_engine_t *engine, const sim_fault_rule_t *rule);
 #endif

@@ -12,6 +12,8 @@ Zephyr / Linux 已提供 device 模型、DTS/DT、boot 编排，所以框架**�
 |---|---|---|---|
 | `console.h` | stdout 输出 + SIGINT/SIGTERM 停止钩子 | 丢弃字节并计数，停止钩子只存不触发 | 终端输出 / 日志 sink 属应用侧 |
 | `args.h` | 解析 `--config/--speed/--version/--help/-h` | 无命令行，返回内置默认 | 启动参数形态是应用/平台约定 |
+| `config_store.h` | 同目录临时文件、校验后的原子保存 | ENOSYS 骨架 | 配置持久化的文件接口差异 |
+| `ui_display.h` | 可选 LVGL 官方 fbdev/evdev，读取系统尺寸及输入范围 | ENOSYS 骨架 | 显示/输入资源及后台线程调度策略 |
 | `config_source.h` | 文件后端（`fopen` + `fread`） | 编译期内置文本 | 配置源是应用领域 |
 | `can_bus.h` | `hal_can` 适配器（256 帧 RX 环 + 确定性发送） | 骨架 | 框架 `hal_can` 是异步契约；应用需要"一帧完成再发下一帧"的确定性 |
 
@@ -54,3 +56,5 @@ Linux `args_parse` 遇到 `--version` 设置 `show_version` 并返回 0，由正
 ## 非阻塞控制台输入
 
 `console_input_poll()` 单消费者调用：0 无空行，1 Enter，2 EOF，负数为错误。Linux 使用 poll/read 读取规范终端或管道，不切换终端模式；非空行忽略，不提供命令解析。Zephyr 返回 `-ENOSYS`，当前只编译骨架。`console_termination_requested()` 区分 SIGTERM 的进程退出请求和 SIGINT 的会话中止；前者一旦置位持续到退出。以上接口由协议线程调用，信号回调仍仅设置通知标记。
+
+UI 显示契约仅接收设备路径与旋转的纯值选项，不依赖 app 配置或暴露 LVGL 类型；Linux 使用实际系统分辨率及 evdev 坐标范围。LVGL 对象由 UI 线程独占，平台后端不依赖应用层。配置保存接口只负责文件原子替换，cJSON 序列化及回读校验在应用工作线程完成。

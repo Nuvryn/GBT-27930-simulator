@@ -9,22 +9,12 @@
 #include "osal/osal.h"
 #include <errno.h>
 #include <string.h>
-typedef enum
-{
-    SIM_STAGE_HANDSHAKE,
-    SIM_STAGE_IDENTIFY,
-    SIM_STAGE_CONFIG,
-    SIM_STAGE_READY,
-    SIM_STAGE_CHARGING,
-    SIM_STAGE_STOPPING,
-    SIM_STAGE_STATISTICS,
-    SIM_STAGE_RECOVERY,
-    SIM_STAGE_DONE
-} sim_stage_t;
+#include <stdio.h>
 static const char *const s_sim_stage_names[] = {"handshake", "identify", "config", "ready", "charging", "stopping", "statistics", "recovery", "done"};
 struct sim_engine_s
 {
     sim_config_t config;
+    sim_status_t observation;
     sim_engine_send_cb_t send_cb;
     void *cb_user;
     j1939_tp_t *tp;
@@ -60,6 +50,14 @@ static void sim_engine_stage(sim_engine_t *engine, sim_stage_t stage, const char
         engine->completed_stats = engine->stage == SIM_STAGE_STATISTICS;
     }
     sim_log_event("STATE", "from=%s to=%s reason=%s", s_sim_stage_names[engine->stage], s_sim_stage_names[stage], reason);
+    sim_status_t *obs = &engine->observation;
+    if (obs->history_count < UINT32_MAX)
+    {
+        obs->history_count++;
+    }
+    sim_transition_t *transition = &obs->history[(obs->history_count - 1u) % SIM_STAGE_HISTORY];
+    *transition = (sim_transition_t){.stage = stage, .entered_ms = engine->now_ms};
+    (void) snprintf(transition->reason, sizeof(transition->reason), "%s", reason);
     engine->stage = stage;
     engine->stage_start_ms = engine->now_ms;
     if (stage == SIM_STAGE_CONFIG)
@@ -73,19 +71,19 @@ static void sim_engine_stage(sim_engine_t *engine, sim_stage_t stage, const char
     }
     if (stage == SIM_STAGE_CHARGING)
     {
-        sim_log_event("ACTION", "模拟主接触器闭合；开始电能传输，不操作硬件");
+        sim_log_event("ACTION", "Simulated main contactor close; energy transfer started; no hardware access");
     }
     if (stage == SIM_STAGE_STOPPING)
     {
         engine->reset_pending = true;
         sim_fault_cancel(engine->fault);
         engine->stop_start_ms = engine->now_ms;
-        sim_log_event("ACTION", "模拟停止电压电流输出，不操作硬件");
+        sim_log_event("ACTION", "Simulated voltage/current output stop; no hardware access");
     }
     if (stage == SIM_STAGE_STATISTICS)
     {
         engine->statistics_started = true;
-        sim_log_event("ACTION", "模拟电流降至安全值、继电器断开，不进行真实采集");
+        sim_log_event("ACTION", "Simulated safe current and relay open; no physical measurement");
     }
     if (stage == SIM_STAGE_DONE && engine->config.version == 2023u)
     {
@@ -145,6 +143,9 @@ static void sim_engine_failure(sim_engine_t *engine, const char *reason, gbt2793
     {
         return;
     }
+    engine->observation.error_stage = engine->stage;
+    engine->observation.error_message = message;
+    (void) snprintf(engine->observation.error, sizeof(engine->observation.error), "%s", reason);
     engine->failed = true;
     engine->error_active = true;
     engine->reset_pending = true;
@@ -166,10 +167,10 @@ static void sim_engine_failure(sim_engine_t *engine, const char *reason, gbt2793
     if (engine->config.version == 2023u && message == GBT27930_BSM)
     {
         engine->blocked = true;
-        sim_log_event("LOCKOUT", "BSM 超时，等待模拟重新插拔枪事件");
+        sim_log_event("LOCKOUT", "BSM timeout; waiting for a simulated unplug/replug event");
     }
     sim_engine_stage(engine, SIM_STAGE_RECOVERY, reason);
-    sim_log_event("ACTION", "模拟停止输出并断开接触器，进入通信故障处理");
+    sim_log_event("ACTION", "Simulated output stop and contactor open; communication recovery");
 }
 /** Callback errors are transport evidence; process resource errors remain fatal. */
 static void sim_engine_tp_event(void *user, bool transmit, uint32_t pgn, int result)
@@ -352,6 +353,9 @@ sim_engine_t *sim_engine_create(const sim_config_t *config, sim_engine_send_cb_t
     engine->config = *config;
     engine->send_cb = send_cb;
     engine->cb_user = cb_user;
+    engine->observation.history_count = 1u;
+    engine->observation.history[0] = (sim_transition_t){.stage = SIM_STAGE_HANDSHAKE};
+    engine->observation.error_message = GBT27930_MESSAGE_COUNT;
     engine->auxiliary_power_on = true;
     j1939_tp_options_t options = {.source = config->source, .peer = config->peer, .dt_interval_ms = config->dt_interval_ms, .rx_window = config->tp_rx_window, .t1_ms = config->tp_t1_ms, .t2_ms = config->tp_t2_ms, .t3_ms = config->tp_t3_ms, .t4_ms = config->tp_t4_ms, .send_cb = sim_engine_tp_send, .recv_cb = sim_engine_tp_receive, .event_cb = sim_engine_tp_event, .cb_user = engine};
     engine->tp = j1939_tp_create(&options);
@@ -361,7 +365,7 @@ sim_engine_t *sim_engine_create(const sim_config_t *config, sim_engine_send_cb_t
         sim_engine_destroy(engine);
         return NULL;
     }
-    sim_log_event("ACTION", "模拟插枪、电子锁锁定、辅助电源接通；测量值来自配置");
+    sim_log_event("ACTION", "Simulated plug-in, lock and auxiliary power on; measurements from configuration");
     return engine;
 }
 void sim_engine_destroy(sim_engine_t *engine)
@@ -436,7 +440,7 @@ static void sim_engine_payload(sim_engine_t *engine, gbt27930_message_t message,
     {
         if (engine->config.charger && message == GBT27930_BHM)
         {
-            sim_log_event("ACTION", "模拟绝缘自检 result=%s", engine->config.self_test_pass ? "pass" : "fail");
+            sim_log_event("ACTION", "Simulated insulation self-test result=%s", engine->config.self_test_pass ? "pass" : "fail");
             if (engine->config.self_test_pass)
             {
                 sim_engine_stage(engine, SIM_STAGE_IDENTIFY, "handshake_complete");
@@ -568,7 +572,7 @@ static void sim_engine_payload(sim_engine_t *engine, gbt27930_message_t message,
             {
                 engine->paused = paused;
                 engine->pause_start_ms = engine->now_ms;
-                sim_log_event("ACTION", "模拟充电%s", paused ? "暂停" : "恢复");
+                sim_log_event("ACTION", "Simulated charging %s", paused ? "paused" : "resumed");
             }
             (void) gbt27930_set(&engine->config.values, "ccs_allow", paused ? 0 : 1);
         }
@@ -624,6 +628,14 @@ static void sim_engine_deliver(sim_engine_t *engine, gbt27930_message_t message,
     {
         sim_log_event("REJECT", "message=%s reason=decode rc=%d", desc->name, rc);
         return;
+    }
+    for (size_t idx = 0u; gbt27930_field(idx) != NULL; idx++)
+    {
+        if (gbt27930_field(idx)->message == message)
+        {
+            engine->observation.peer.field[idx] = decoded.field[idx];
+            engine->observation.peer.available[idx] = decoded.available[idx];
+        }
     }
     engine->received_ms[message] = engine->now_ms;
     engine->has_received[message] = true;
@@ -848,7 +860,7 @@ static void sim_engine_aux_power_off(sim_engine_t *engine, const char *reason)
         engine->auxiliary_power_on = false;
         engine->reset_pending = true;
         sim_fault_cancel(engine->fault);
-        sim_log_event("ACTION", "模拟辅助电源断开、电子锁解锁 reason=%s", reason);
+        sim_log_event("ACTION", "Simulated auxiliary power off and unlock reason=%s", reason);
     }
 }
 /** Scene events use stage-relative time; '*' uses session elapsed time. */
@@ -878,7 +890,7 @@ static void sim_engine_events(sim_engine_t *engine)
             sim_engine_aux_power_off(engine, "unplug");
             engine->unplugged = true;
             engine->reset_pending = true;
-            sim_log_event("ACTION", "模拟拔枪、断开输出");
+            sim_log_event("ACTION", "Simulated unplug and output disconnect");
         }
         else if (strcmp(event->action, "replug") == 0)
         {
@@ -934,7 +946,7 @@ static void sim_engine_progress(sim_engine_t *engine)
         }
         engine->own_ready = true;
         engine->own_ready_ms = engine->now_ms;
-        sim_log_event("ACTION", "模拟就绪及预充校验 result=pass，测量值来自配置");
+        sim_log_event("ACTION", "Simulated readiness and precharge result=pass; measurements from configuration");
         engine->has_sent[engine->config.charger ? GBT27930_CRO : GBT27930_BRO] = false;
     }
     if (engine->stage == SIM_STAGE_READY && !engine->config.charger && engine->own_ready && engine->own_ready_sent && engine->peer_ready)
@@ -983,6 +995,10 @@ int sim_engine_tick(sim_engine_t *engine, uint32_t now_ms)
     }
     if (now_ms >= engine->config.max_session_ms)
     {
+        engine->observation.error_stage = engine->stage;
+        engine->observation.error_message = GBT27930_MESSAGE_COUNT;
+        (void) snprintf(engine->observation.error, sizeof(engine->observation.error), "session_timeout");
+        engine->failed = true;
         sim_log_event("ERROR", "reason=session_timeout");
         return -ETIMEDOUT;
     }
@@ -1050,4 +1066,92 @@ int sim_engine_tick(sim_engine_t *engine, uint32_t now_ms)
         }
     }
     return 0;
+}
+
+const char *sim_stage_name(sim_stage_t stage)
+{
+    return (unsigned) stage < SIM_STAGE_IDLE ? s_sim_stage_names[stage] : "idle";
+}
+int sim_engine_manual_fault(sim_engine_t *engine, const sim_fault_rule_t *rule)
+{
+    return engine == NULL ? -EINVAL : sim_fault_manual(engine->fault, rule, engine->now_ms);
+}
+void sim_engine_status(const sim_engine_t *engine, sim_status_t *status)
+{
+    *status = engine->observation;
+    status->active = true;
+    status->stage = engine->stage;
+    status->elapsed_ms = engine->now_ms;
+    status->stage_elapsed_ms = engine->now_ms - engine->stage_start_ms;
+    status->local = engine->config.values;
+    status->failed = engine->failed;
+    status->paused = engine->stage == SIM_STAGE_CHARGING && (engine->config.charger ? engine->paused : gbt27930_get(&engine->config.values, "bsm_allow") == 0 || (engine->has_received[GBT27930_CCS] && engine->now_ms - engine->received_ms[GBT27930_CCS] < engine->config.timeout_ms[GBT27930_CCS] && gbt27930_get(&engine->observation.peer, "ccs_allow") == 0));
+    sim_fault_manual_status(engine->fault, &status->fault_enabled, &status->fault_hits);
+    for (unsigned msg = 0u; msg < GBT27930_MESSAGE_COUNT; msg++)
+    {
+        if (engine->has_received[msg] && engine->now_ms - engine->received_ms[msg] < engine->config.timeout_ms[msg])
+        {
+            status->peer_valid_messages |= 1u << msg;
+        }
+    }
+    bool charger = engine->config.charger;
+    switch (engine->stage)
+    {
+        case SIM_STAGE_HANDSHAKE:
+            status->waiting_messages = 1u << (charger ? GBT27930_BHM : (engine->has_received[GBT27930_CHM] ? GBT27930_CRM : GBT27930_CHM));
+            break;
+        case SIM_STAGE_IDENTIFY:
+            status->waiting_messages = 1u << (charger ? (engine->recognized ? GBT27930_BCP : GBT27930_BRM) : GBT27930_CRM);
+            break;
+        case SIM_STAGE_CONFIG:
+            status->waiting_messages = charger ? (1u << GBT27930_BRO) : (1u << GBT27930_CML) | (engine->has_received[GBT27930_CTS] ? 0u : 1u << GBT27930_CTS);
+            break;
+        case SIM_STAGE_READY:
+            if (!engine->own_ready)
+            {
+                status->conditions |= 2u | 4u;
+            }
+            if (!engine->peer_ready)
+            {
+                status->conditions |= 8u;
+                status->waiting_messages |= 1u << (charger ? GBT27930_BRO : GBT27930_CRO);
+            }
+            if (!engine->own_ready_sent)
+            {
+                status->conditions |= 16u;
+            }
+            if (engine->bcp_update_remaining != 0u || engine->bro_initial_pending)
+            {
+                status->conditions |= 32u;
+            }
+            if (charger && engine->own_ready_sent)
+            {
+                if (!engine->has_received[GBT27930_BCL])
+                {
+                    status->waiting_messages |= 1u << GBT27930_BCL;
+                }
+                if (!engine->has_received[GBT27930_BCS])
+                {
+                    status->waiting_messages |= 1u << GBT27930_BCS;
+                }
+            }
+            break;
+        case SIM_STAGE_CHARGING:
+            status->waiting_messages = charger ? (1u << GBT27930_BCL) | (1u << GBT27930_BCS) | ((engine->config.version == 2015u || engine->has_received[GBT27930_BSM]) ? 1u << GBT27930_BSM : 0u) : 1u << GBT27930_CCS;
+            break;
+        case SIM_STAGE_STOPPING:
+            status->waiting_messages = 1u << (charger ? (engine->has_received[GBT27930_BST] ? GBT27930_BSD : GBT27930_BST) : GBT27930_CST);
+            break;
+        case SIM_STAGE_STATISTICS:
+            status->waiting_messages = 1u << (charger ? GBT27930_BSD : GBT27930_CSD);
+            break;
+        case SIM_STAGE_RECOVERY:
+            status->conditions = 128u;
+            break;
+        case SIM_STAGE_DONE:
+            status->conditions = 64u;
+            break;
+        default:
+            break;
+    }
 }

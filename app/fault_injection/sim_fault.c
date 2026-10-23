@@ -7,7 +7,7 @@
 #define SIM_FAULT_QUEUE_CAPACITY 64u
 typedef struct
 {
-    bool occupied;
+    bool occupied, manual;
     bool receive;
     char message[16];
     uint32_t due_ms;
@@ -17,6 +17,9 @@ typedef struct
 } sim_fault_pending_t;
 struct sim_fault_s
 {
+    sim_fault_rule_t manual;
+    bool manual_enabled, dispatch_manual;
+    uint32_t manual_hits, manual_start_ms, now_ms;
     const sim_config_t *config;
     sim_fault_dispatch_cb_t dispatch_cb;
     void *cb_user;
@@ -62,6 +65,7 @@ static int sim_fault_delay(sim_fault_t *fault, bool receive, const char *message
         {
             sim_fault_pending_t *pending = &fault->queue[idx];
             pending->occupied = true;
+            pending->manual = fault->dispatch_manual;
             pending->receive = receive;
             pending->id = id;
             pending->len = len;
@@ -82,18 +86,26 @@ int sim_fault_apply(sim_fault_t *fault, bool receive, const char *message, const
     }
     uint8_t changed[GBT27930_PAYLOAD_CAPACITY];
     memcpy(changed, data, len);
-    for (size_t idx = 0u; idx < fault->config->fault_count; idx++)
+    fault->now_ms = now_ms;
+    for (size_t idx = 0u; idx <= fault->config->fault_count; idx++)
     {
-        const sim_fault_rule_t *rule = &fault->config->faults[idx];
-        uint32_t elapsed = strcmp(rule->stage, "*") == 0 ? now_ms : stage_ms;
-        if (rule->receive != receive || strcmp(rule->message, message) != 0 || (strcmp(rule->stage, "*") != 0 && strcmp(rule->stage, stage) != 0) ||
-            elapsed < rule->after_ms || (rule->duration_ms != 0u && elapsed - rule->after_ms >= rule->duration_ms) || (rule->count != 0u && fault->hits[idx] >= rule->count))
+        bool manual = idx == 0u;
+        if (manual && !fault->manual_enabled)
         {
             continue;
         }
-        fault->hits[idx]++;
-        sim_log_event("FAULT", "rule=%u message=%s direction=%s action=%u hit=%u before_len=%u byte=%u before=%u after=%u", (unsigned) idx, message, receive ? "rx" : "tx",
-            (unsigned) rule->action, (unsigned) fault->hits[idx], (unsigned) len, (unsigned) rule->byte, rule->byte < len ? (unsigned) changed[rule->byte] : 0u, (unsigned) rule->value);
+        const sim_fault_rule_t *rule = manual ? &fault->manual : &fault->config->faults[idx - 1u];
+        uint32_t *hits = manual ? &fault->manual_hits : &fault->hits[idx - 1u];
+        uint32_t elapsed = manual ? now_ms - fault->manual_start_ms : (strcmp(rule->stage, "*") == 0 ? now_ms : stage_ms);
+        if (rule->receive != receive || strcmp(rule->message, message) != 0 || (strcmp(rule->stage, "*") != 0 && strcmp(rule->stage, stage) != 0) ||
+            elapsed < rule->after_ms || (rule->duration_ms != 0u && elapsed - rule->after_ms >= rule->duration_ms) || (rule->count != 0u && *hits >= rule->count))
+        {
+            continue;
+        }
+        (*hits)++;
+        fault->dispatch_manual = manual;
+        sim_log_event("FAULT", "source=%s rule=%u message=%s direction=%s action=%u hit=%u before_len=%u byte=%u before=%u after=%u", manual ? "manual" : "config", manual ? 0u : (unsigned) (idx - 1u), message, receive ? "rx" : "tx",
+            (unsigned) rule->action, (unsigned) *hits, (unsigned) len, (unsigned) rule->byte, rule->byte < len ? (unsigned) changed[rule->byte] : 0u, (unsigned) rule->value);
         switch (rule->action)
         {
             case SIM_FAULT_DROP:
@@ -139,6 +151,7 @@ int sim_fault_apply(sim_fault_t *fault, bool receive, const char *message, const
 }
 int sim_fault_tick(sim_fault_t *fault, uint32_t now_ms)
 {
+    fault->now_ms = now_ms;
     for (size_t idx = 0u; idx < SIM_FAULT_QUEUE_CAPACITY; idx++)
     {
         sim_fault_pending_t *pending = &fault->queue[idx];
@@ -153,4 +166,34 @@ int sim_fault_tick(sim_fault_t *fault, uint32_t now_ms)
         }
     }
     return 0;
+}
+
+int sim_fault_manual(sim_fault_t *fault, const sim_fault_rule_t *rule, uint32_t now_ms)
+{
+    if (fault == NULL || (rule != NULL && sim_config_validate_fault(rule) != 0))
+    {
+        return -EINVAL;
+    }
+    for (size_t idx = 0u; idx < SIM_FAULT_QUEUE_CAPACITY; idx++)
+    {
+        if (fault->queue[idx].manual)
+        {
+            fault->queue[idx].occupied = false;
+        }
+    }
+    fault->manual_enabled = rule != NULL;
+    if (rule != NULL)
+    {
+        fault->manual = *rule;
+        fault->manual_hits = 0u;
+        fault->manual_start_ms = now_ms;
+    }
+    sim_log_event("FAULT_CONTROL", "source=manual enabled=%u", rule != NULL ? 1u : 0u);
+    return 0;
+}
+void sim_fault_manual_status(const sim_fault_t *fault, bool *enabled, uint32_t *hits)
+{
+    *hits = fault->manual_hits;
+    *enabled = fault->manual_enabled && (fault->manual.count == 0u || fault->manual_hits < fault->manual.count) &&
+               (fault->manual.duration_ms == 0u || fault->now_ms - fault->manual_start_ms < fault->manual.after_ms + fault->manual.duration_ms);
 }
