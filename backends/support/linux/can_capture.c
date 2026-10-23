@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/file.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
@@ -194,6 +195,12 @@ static int can_capture_open_file(unsigned stream, const char *path)
     if (fd < 0)
     {
         return -errno;
+    }
+    if (flock(fd, LOCK_EX | LOCK_NB) != 0)
+    {
+        int error = -errno;
+        (void) close(fd);
+        return error;
     }
     s_can_capture_files[stream] = fdopen(fd, "w");
     if (s_can_capture_files[stream] == NULL)

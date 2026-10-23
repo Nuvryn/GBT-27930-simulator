@@ -1,5 +1,11 @@
 # 验证清单与交付边界
 
+## 日志保留专项（2026-10-23）
+
+`log_retention` 在隔离临时目录中验证：BMS/charger 各保留 3 次、应用/关联抓包/诊断成组清理、关闭应用日志后的独立抓包、进程间活动租约、异常退出释放、显式复用旧路径退出管理、未登记文件及非法标记保护、符号链接保护和管理初始化失败。`simulator_cli` 确认正式入口为自动日志生成归属标记。
+
+保留策略固定为每角色 3 次，不限制单次文件大小；活动或明确退出管理的记录不计为可删除目标，旧版无归属标记文件不迁移、不自动删除。当前 CTest 共 15 项，软件场景仍为 29 个。
+
 ## 上海时间命名专项（2026-10-23）
 
 自动生成的应用日志及独立 candump 文件名固定使用上海时间 UTC+8。`sim_log` 检查 UTC、UTC+8、带夏令时的其他时区和未设置 TZ 四种环境下的相同结果，覆盖跨年、闰日、缓冲区不足及时间溢出；不依赖系统时区数据库。
@@ -12,11 +18,11 @@ Linux 14 项 CTest（含 29 个双进程场景）、ARM 交叉编译、Zephyr �
 
 | 检查 | 结果 | 证据/复现入口 |
 |---|---|---|
-| Linux 严格告警构建与 14 项 CTest | PASS | `scripts/verify_simulator.sh --prepare-vcan`；`build/Testing/Temporary/LastTest.log` |
+| Linux 严格告警构建与 15 项 CTest | PASS | `scripts/verify_simulator.sh --prepare-vcan`；`build/Testing/Temporary/LastTest.log` |
 | 2015、2023 双角色正常充电及双方主动结束 | PASS | 四个 normal 场景及独立可控时间引擎测试 |
 | 真实时间双角色正常充电 | PASS | `scripts/verify_real_time.sh`；`report_real_time_2015.json` / `report_real_time_2023.json` |
 | DT 最小 10 ms 与 BCL/CCS 50 ms 调度 | PASS | 独立 TP 可控时间检查、真实时间日志间隔；后者允许至 100 ms 用于本机回归 |
-| ASan + UBSan | PASS | `scripts/verify_build_matrix.sh` 的 7 项抓包/日志/核心/启停边界/CLI 检查；启动、异常及最大 TP 负载路径 |
+| ASan + UBSan | PASS | `scripts/verify_build_matrix.sh` 的 8 项保留策略/抓包/日志/核心/启停边界/CLI 检查；启动、异常及最大 TP 负载路径 |
 | 固定依赖完整性 | PASS | `scripts/check_dependencies.py`，原始 Open-SAE-J1939 58 文件、cJSON、EasyLogger |
 | ARM Linux 交叉编译 | PASS | `build-armhf/gbt27930_simulator`；ELF32 ARM EABI5，v7，VFP 寄存器传参 |
 | Zephyr 骨架编译 | PASS | `build-zephyr/gbt27930_simulator`；仅桩头文件构建，无真实 SDK/设备运行 |

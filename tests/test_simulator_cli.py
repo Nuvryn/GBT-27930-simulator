@@ -32,6 +32,9 @@ def main():
             print(f"FAIL: generated log: {result.stdout}")
             return 1
     generated = set((directory / "logs").glob("*.log")) - existing
+    if any((directory / "logs" / f".{path.stem}.session").read_text() != "GBT27930_LOG_SESSION_V1\n1\n" for path in generated):
+        print("FAIL: automatic logs lack session ownership records")
+        return 1
     import re
     if len(generated) != 2 or {path.stem.split("_")[-1] for path in generated} != {"bms", "charger"} or any(not re.fullmatch(r"\d{8}_\d{6}_(bms|charger)\.log", path.name) or
                                   "can_bus_open failed" not in path.read_text() for path in generated):

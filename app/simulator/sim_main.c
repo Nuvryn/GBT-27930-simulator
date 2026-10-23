@@ -7,6 +7,7 @@
 #include "support/can_capture.h"
 #include "support/console.h"
 #include "support/log_sink.h"
+#include "support/log_retention.h"
 #include "osal/osal.h"
 #include <signal.h>
 #include <stdio.h>
@@ -22,6 +23,12 @@ static int sim_main_send(void *user, const sim_frame_t *frame)
     (void) user;
     int rc = can_bus_send(frame->id, frame->data, frame->len);
     sim_log_frame(rc == 0 ? "TX" : "TX_ERROR", frame);
+    return rc;
+}
+static int sim_main_log_close(void)
+{
+    int rc = sim_log_close();
+    log_retention_close();
     return rc;
 }
 /** All resources are initialized once and released in reverse order. */
@@ -50,11 +57,20 @@ static int sim_main_run(const args_t *args)
     }
     sim_log_event("START", "role=%s version=%u interface=%s source=%02X peer=%02X speed=%u software_test=%u",
         config.charger ? "charger" : "bms", config.version, config.can_interface, (unsigned) config.source, (unsigned) config.peer, config.speed, config.software_test ? 1u : 0u);
-    int rc = can_bus_open(config.can_interface, false);
+    const char *role = config.charger ? "charger" : "bms";
+    const char *automatic_log = config.file_log && config.log_path[0] == '\0' ? log_sink_path() : NULL;
+    int rc = log_retention_track(role, automatic_log, NULL);
+    if (rc != 0)
+    {
+        sim_log_event("ERROR", "log retention failed rc=%d", rc);
+        (void) sim_main_log_close();
+        return 1;
+    }
+    rc = can_bus_open(config.can_interface, false);
     if (rc != 0)
     {
         sim_log_event("ERROR", "can_bus_open failed rc=%d", rc);
-        (void) sim_log_close();
+        (void) sim_main_log_close();
         return 1;
     }
     console_set_stop_handler(sim_main_stop);
@@ -68,12 +84,21 @@ static int sim_main_run(const args_t *args)
             path = capture_path;
         }
         rc = can_capture_start(config.can_interface, path, config.charger ? "charger" : "bms");
+        if (rc == 0 && config.candump_path[0] == '\0' && (!config.file_log || automatic_log != NULL))
+        {
+            rc = log_retention_track(role, automatic_log, can_capture_path());
+            if (rc != 0)
+            {
+                sim_log_event("ERROR", "capture retention failed rc=%d", rc);
+                (void) can_capture_stop();
+            }
+        }
         if (rc != 0)
         {
             sim_log_event("ERROR", "candump startup failed rc=%d path=%s", rc, can_capture_path());
             console_set_stop_handler(NULL);
             can_bus_close();
-            (void) sim_log_close();
+            (void) sim_main_log_close();
             return 1;
         }
         sim_log_event("CAPTURE", "started interface=%s path=%s", config.can_interface, can_capture_path());
@@ -87,7 +112,7 @@ static int sim_main_run(const args_t *args)
         }
         console_set_stop_handler(NULL);
         can_bus_close();
-        (void) sim_log_close();
+        (void) sim_main_log_close();
         return 1;
     }
     uint32_t start_ms = osal_get_tick_ms();
@@ -154,7 +179,7 @@ static int sim_main_run(const args_t *args)
     console_set_stop_handler(NULL);
     sim_engine_destroy(engine);
     can_bus_close();
-    if (sim_log_close() != 0)
+    if (sim_main_log_close() != 0)
     {
         return 1;
     }

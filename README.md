@@ -5,6 +5,8 @@
 日志使用 EasyLogger 异步缓冲和独立输出线程，默认保存到 `logs/年月日_时分秒_角色.log`。固定使用上海时间（UTC+8）；`file_log=false` 可关闭文件保存。
 `candump` 原始抓包由配置控制，默认关闭；Linux/ARM 按需设置 `"candump": true`，并部署 `can-utils` 的 candump。原始文件旁保存诊断文件。应用日志文件由 `file_log` 独立控制。
 
+Linux 自动日志按 BMS、charger 各保留最近 3 次运行，应用日志和自动抓包成组清理；活动会话、显式路径及旧版无归属标记文件受保护。单次运行大小不受此策略限制，详见 [日志保留说明](docs/simulator_usage.md)。
+
 继电器、接触器、辅助电源、电子锁及采集操作仅记录模拟动作；条件判断与测量值来自配置和场景事件。运行平台为 ARM Linux，Zephyr 仅保留编译骨架。
 
 依赖使用已经确认的 Open-SAE-J1939、cJSON、EasyLogger 固定源码；构建无需下载。新增库必须先征得使用者同意。来源、许可和哈希校验见 [依赖说明](docs/dependencies.md)。

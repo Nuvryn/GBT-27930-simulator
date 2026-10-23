@@ -2,12 +2,14 @@
 #define _POSIX_C_SOURCE 200809L
 #include "support/log_sink.h"
 #include "backends/support/linux/log_filename_time.h"
+#include "log_retention_internal.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -143,6 +145,12 @@ static int log_sink_open_generated(const char *role)
     {
         return -errno;
     }
+    if (flock(fd, LOCK_EX | LOCK_NB) != 0)
+    {
+        int error = -errno;
+        (void) close(fd);
+        return error;
+    }
     s_log_sink_file = fdopen(fd, "w");
     if (s_log_sink_file == NULL)
     {
@@ -172,18 +180,37 @@ int log_sink_open(bool file_enabled, const char *path, const char *role)
     {
         return -ENAMETOOLONG;
     }
-    s_log_sink_file = fopen(path, "wb");
-    if (s_log_sink_file == NULL)
+    int fd = open(path, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
+    if (fd < 0)
     {
         return -errno;
     }
     struct stat info;
-    if (fstat(fileno(s_log_sink_file), &info) != 0 || !S_ISREG(info.st_mode) ||
-        fcntl(fileno(s_log_sink_file), F_SETFD, FD_CLOEXEC) != 0)
+    if (fstat(fd, &info) != 0 || !S_ISREG(info.st_mode))
     {
-        (void) fclose(s_log_sink_file);
-        s_log_sink_file = NULL;
+        (void) close(fd);
         return -EINVAL;
+    }
+    /* Acquire the writer lease before truncation, including explicitly named files. */
+    if (flock(fd, LOCK_EX | LOCK_NB) != 0)
+    {
+        int error = -errno;
+        (void) close(fd);
+        return error;
+    }
+    int rc = log_retention_protect_file(fd);
+    if (rc != 0 || ftruncate(fd, 0) != 0)
+    {
+        int error = rc != 0 ? rc : -errno;
+        (void) close(fd);
+        return error;
+    }
+    s_log_sink_file = fdopen(fd, "w");
+    if (s_log_sink_file == NULL)
+    {
+        int error = -errno;
+        (void) close(fd);
+        return error;
     }
     (void) snprintf(s_log_sink_path, sizeof(s_log_sink_path), "%s", path);
     return 0;

@@ -117,6 +117,9 @@ target_include_directories(easylogger SYSTEM PUBLIC ${ROOT}/third_party/easylogg
 target_include_directories(easylogger PUBLIC ${ROOT}/app/logging)
 target_sources(scaffold_support PRIVATE backends/support/${PLATFORM}/log_sink.c)
 target_sources(scaffold_support PRIVATE backends/support/${PLATFORM}/can_capture.c)
+target_sources(scaffold_support PRIVATE backends/support/${PLATFORM}/log_retention.c)
+set_source_files_properties(backends/support/${PLATFORM}/log_retention.c PROPERTIES
+    COMPILE_OPTIONS "-Wall;-Wextra;-Werror;-Wconversion;-Wsign-conversion;-Wstrict-prototypes")
 set_source_files_properties(backends/support/${PLATFORM}/can_capture.c PROPERTIES
     COMPILE_OPTIONS "-Wall;-Wextra;-Werror;-Wconversion;-Wsign-conversion;-Wstrict-prototypes")
 add_library(sim_core STATIC app/protocol/gbt27930_codec.c app/config/sim_config.c
@@ -148,6 +151,11 @@ endif()
 include(CTest)
 if(BUILD_TESTING AND PLATFORM STREQUAL "linux")
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    add_executable(test_log_retention tests/test_log_retention.c)
+    target_link_libraries(test_log_retention PRIVATE scaffold_support)
+    target_compile_options(test_log_retention PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion)
+    add_test(NAME log_retention COMMAND test_log_retention)
+    set_tests_properties(log_retention PROPERTIES TIMEOUT 15)
     add_executable(test_message_lifecycle tests/test_message_lifecycle.c)
     target_link_libraries(test_message_lifecycle PRIVATE sim_core)
     target_compile_options(test_message_lifecycle PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion)
