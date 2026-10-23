@@ -9,17 +9,19 @@
  *   - backends/support/zephyr/args.c : no command line, returns the built-in defaults.
  *
  * Return value semantics (args_parse):
- *   0  continue running (args filled in);
+ *   0  args filled in; caller handles show_version before normal startup;
  *   1  --help handled (usage printed), the caller should exit with exit code 0;
  *   -1 argument error (error already printed), the caller should exit with exit code 1.
  */
 
 #ifndef SUPPORT_ARGS_H
 #define SUPPORT_ARGS_H
+#include <stdbool.h>
 
 /* -------------- startup arguments -------------- */
 
-typedef struct {
+typedef struct
+{
     /**
      * config source (passed to config_source_load):
      *   - Linux: config file path (default "config/default.json", given by the linux backend);
@@ -28,7 +30,9 @@ typedef struct {
     const char *config_src;
 
     /** speed rate override: >0 overrides the config file speed; 0 = use the configured value. */
-    unsigned    speed;
+    unsigned speed;
+    /** Linux --version short-circuits parsing; no configuration or I/O is started. */
+    bool show_version;
 } args_t;
 
 /* -------------- startup argument parsing -------------- */
@@ -38,7 +42,7 @@ typedef struct {
  * @param out   output (allocated by the caller; filled in when 0 is returned successfully)
  * @param argc  linux: number of command line arguments; zephyr: 0
  * @param argv  linux: command line argument array; zephyr: NULL
- * @return 0 = continue, 1 = help already printed (caller exits 0), -1 = argument error (caller exits 1)
+ * @return 0 = args filled (check show_version), 1 = help printed (exit 0), -1 = argument error (exit 1)
  */
 int args_parse(args_t *out, int argc, char **argv);
 

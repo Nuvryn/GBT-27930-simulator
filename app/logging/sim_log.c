@@ -2,6 +2,7 @@
 #include "logging/sim_log.h"
 #include "support/log_sink.h"
 #include "elog.h"
+#include "osal/osal.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdatomic.h>
@@ -87,6 +88,42 @@ void sim_log_event(const char *tag, const char *format, ...)
     (void) vsnprintf(message, sizeof(message), format, args);
     va_end(args);
     elog_info(tag, "%s", message);
+}
+int sim_log_detail(const char *format, ...)
+{
+    if (format == NULL)
+    {
+        return -EINVAL;
+    }
+    char message[1024];
+    va_list args;
+    va_start(args, format);
+    int len = vsnprintf(message, sizeof(message), format, args);
+    va_end(args);
+    if (len < 0 || (size_t) len >= sizeof(message))
+    {
+        return -ENOSPC;
+    }
+    uint32_t start_ms = osal_get_tick_ms();
+    while (atomic_load(&s_sim_log_pending) > ELOG_ASYNC_OUTPUT_BUF_SIZE / 2u)
+    {
+        if (log_sink_error() != 0)
+        {
+            return log_sink_error();
+        }
+        if (osal_get_tick_ms() - start_ms >= 5000u)
+        {
+            return -ETIMEDOUT;
+        }
+        log_sink_notify();
+        osal_delay_ms(1u);
+    }
+    if (log_sink_error() != 0)
+    {
+        return log_sink_error();
+    }
+    elog_info("DETAIL", "%s", message);
+    return log_sink_error();
 }
 void sim_log_frame(const char *direction, const sim_frame_t *frame)
 {

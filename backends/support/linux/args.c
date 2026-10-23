@@ -41,6 +41,7 @@ static void print_usage(const char *prog)
     console_printf("                     (default: %s)\n", HOST_DEFAULT_CONFIG);
     console_printf("  --speed <N>       Speed multiplier (default: 1)\n");
     console_printf("  --help, -h        Show this help message and exit\n");
+    console_printf("  --version         Show software version and build information, then exit\n");
     console_printf("\n");
     console_printf("Examples:\n");
     console_printf("  %s\n", prog);
@@ -58,6 +59,7 @@ int args_parse(args_t *out, int argc, char **argv)
     /* Defaults: default config file; speed=0 = use the configured value */
     out->config_src = HOST_DEFAULT_CONFIG;
     out->speed = 0;
+    out->show_version = false;
 
     if (argc > 0 && argv != NULL)
     {
@@ -67,6 +69,11 @@ int args_parse(args_t *out, int argc, char **argv)
             {
                 print_usage(argv[0]);
                 return 1; /* help handled, caller exits with exit code 0 */
+            }
+            else if (strcmp(argv[i], "--version") == 0)
+            {
+                out->show_version = true;
+                return 0;
             }
             else if (strcmp(argv[i], "--config") == 0 && i + 1 < argc)
             {

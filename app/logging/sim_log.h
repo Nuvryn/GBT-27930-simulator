@@ -12,6 +12,11 @@ int sim_log_open(bool file, const char *path, const char *role);
 void sim_log_time(uint32_t now_ms);
 /** printf format; bounded to one line; call only from protocol thread. */
 void sim_log_event(const char *tag, const char *format, ...);
+/** Startup-only file detail, omitted from the Linux console. Returns negative errno
+ * on formatting/output errors. May wait up to 5 seconds for ring capacity; never
+ * call from the protocol scheduling path. Uses the same asynchronous worker.
+ */
+int sim_log_detail(const char *format, ...);
 /** Raw frame evidence, NULL ignored. */
 void sim_log_frame(const char *direction, const sim_frame_t *frame);
 /** Stop producer, drain/join worker, then close file. Returns any output/overflow error. */

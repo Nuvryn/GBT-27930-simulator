@@ -7,6 +7,8 @@
 
 Linux 自动日志按 BMS、charger 各保留最近 3 次运行，应用日志和自动抓包成组清理；活动会话、显式路径及旧版无归属标记文件受保护。单次运行大小不受此策略限制，详见 [日志保留说明](docs/simulator_usage.md)。
 
+Linux 支持 `gbt27930_simulator --version` 查询软件版本、UTC 构建时间和目标架构。正常启动使用英文摘要，文件另存完整有效配置（含默认值及命令行覆盖）；不展示 Git 提交号或 Debug/Release。
+
 继电器、接触器、辅助电源、电子锁及采集操作仅记录模拟动作；条件判断与测量值来自配置和场景事件。运行平台为 ARM Linux，Zephyr 仅保留编译骨架。
 
 依赖使用已经确认的 Open-SAE-J1939、cJSON、EasyLogger 固定源码；构建无需下载。新增库必须先征得使用者同意。来源、许可和哈希校验见 [依赖说明](docs/dependencies.md)。

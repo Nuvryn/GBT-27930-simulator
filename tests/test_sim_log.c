@@ -15,6 +15,40 @@
 #include <unistd.h>
 
 extern void elog_async_output(uint8_t level, const char *log, size_t size);
+static int test_log_console_routing(void)
+{
+    FILE *console = tmpfile();
+    int saved = dup(STDOUT_FILENO);
+    if (console == NULL || saved < 0 || fflush(stdout) != 0 || dup2(fileno(console), STDOUT_FILENO) < 0 ||
+        log_sink_open(true, "startup_route.log", "bms") != 0)
+    {
+        return 1;
+    }
+    const char text[] = "DETAIL          [0 ms] hidden-startup-value\nSTART           [0 ms] visible-summary\nEND";
+    for (size_t idx = 0u; idx < sizeof(text) - 1u; idx++)
+    {
+        log_sink_write(text + idx, 1u);
+    }
+    int rc = log_sink_close();
+    (void) dup2(saved, STDOUT_FILENO);
+    (void) close(saved);
+    rewind(console);
+    char visible[512] = {0}, recorded[512] = {0};
+    size_t count = fread(visible, 1u, sizeof(visible) - 1u, console);
+    (void) fclose(console);
+    FILE *file = fopen("startup_route.log", "r");
+    if (file == NULL)
+    {
+        return 1;
+    }
+    (void) fread(recorded, 1u, sizeof(recorded) - 1u, file);
+    (void) fclose(file);
+    (void) unlink("startup_route.log");
+    return rc == 0 && count != 0u && strstr(visible, "hidden-startup-value") == NULL &&
+                   strstr(visible, "visible-summary\nEND") != NULL && strcmp(recorded, text) == 0
+               ? 0
+               : 1;
+}
 static int test_log_shanghai_time(void)
 {
     const char *original_zone = getenv("TZ");
@@ -113,7 +147,7 @@ static int test_log_slow_output(void)
 }
 int main(void)
 {
-    if (test_log_shanghai_time() != 0 || test_log_slow_output() != 0 || sim_log_open(true, "async_log_test.log", "bms") != 0)
+    if (test_log_console_routing() != 0 || test_log_shanghai_time() != 0 || test_log_slow_output() != 0 || sim_log_open(true, "async_log_test.log", "bms") != 0)
     {
         return 1;
     }

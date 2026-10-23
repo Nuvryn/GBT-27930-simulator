@@ -1,6 +1,7 @@
 /** @file sim_main.c @brief Simulator lifecycle; one process and protocol thread per role. */
 #include "config/sim_config.h"
 #include "simulator/sim_engine.h"
+#include "simulator/sim_build_info.h"
 #include "logging/sim_log.h"
 #include "support/args.h"
 #include "support/can_bus.h"
@@ -31,9 +32,49 @@ static int sim_main_log_close(void)
     log_retention_close();
     return rc;
 }
+static void sim_main_version(void)
+{
+    const sim_build_info_t *info = sim_build_info_get();
+    console_printf("GB/T 27930 Simulator v%s\nBuild: %s\nTarget: %s\n", info->version, info->time_utc, info->target);
+}
+static int sim_main_config_record(const char *data, size_t len, void *cb_user)
+{
+    unsigned *part = cb_user;
+    (*part)++;
+    return sim_log_detail("CONFIG part=%u data=%.*s", *part, (int) len, data);
+}
+static int sim_main_startup(const sim_config_t *config, const args_t *args)
+{
+    const sim_build_info_t *info = sim_build_info_get();
+    int rc = sim_log_detail("software_version=%s built_utc=%s target=%s", info->version, info->time_utc, info->target);
+    if (rc == 0)
+    {
+        rc = sim_log_detail("config_source=%s speed_override=%u", args->config_src != NULL ? args->config_src : "builtin", args->speed);
+    }
+    if (rc == 0)
+    {
+        rc = sim_log_detail("compiler=%s", info->compiler);
+    }
+    if (rc == 0)
+    {
+        rc = sim_log_detail("CONFIG_BEGIN effective=true defaults_included=true");
+    }
+    unsigned part = 0u;
+    if (rc == 0)
+    {
+        rc = sim_config_snapshot(config, sim_main_config_record, &part);
+    }
+    if (rc == 0)
+    {
+        rc = sim_log_detail("CONFIG_END parts=%u", part);
+    }
+    return rc;
+}
 /** All resources are initialized once and released in reverse order. */
 static int sim_main_run(const args_t *args)
 {
+    sim_main_version();
+    console_printf("Config: %s\n", args->config_src != NULL ? args->config_src : "builtin");
     sim_config_t config;
     char error[256];
     if (sim_config_load(args->config_src, &config, error, sizeof(error)) != 0)
@@ -59,7 +100,14 @@ static int sim_main_run(const args_t *args)
         config.charger ? "charger" : "bms", config.version, config.can_interface, (unsigned) config.source, (unsigned) config.peer, config.speed, config.software_test ? 1u : 0u);
     const char *role = config.charger ? "charger" : "bms";
     const char *automatic_log = config.file_log && config.log_path[0] == '\0' ? log_sink_path() : NULL;
-    int rc = log_retention_track(role, automatic_log, NULL);
+    int rc = sim_main_startup(&config, args);
+    if (rc != 0)
+    {
+        sim_log_event("ERROR", "startup information failed rc=%d", rc);
+        (void) sim_main_log_close();
+        return 1;
+    }
+    rc = log_retention_track(role, automatic_log, NULL);
     if (rc != 0)
     {
         sim_log_event("ERROR", "log retention failed rc=%d", rc);
@@ -116,6 +164,7 @@ static int sim_main_run(const args_t *args)
         return 1;
     }
     uint32_t start_ms = osal_get_tick_ms();
+    sim_log_event("READY", "Startup complete");
     int result = 0;
     while (result == 0)
     {
@@ -197,6 +246,11 @@ int main(int argc, char **argv)
     if (rc != 0)
     {
         return 1;
+    }
+    if (args.show_version)
+    {
+        sim_main_version();
+        return 0;
     }
     return sim_main_run(&args);
 }

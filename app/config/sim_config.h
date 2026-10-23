@@ -87,4 +87,12 @@ void sim_config_defaults(sim_config_t *out_config);
 int sim_config_parse(const char *text, sim_config_t *out_config, char *out_error, size_t error_capacity);
 /** Configuration-source wrapper; ownership of source text remains internal. */
 int sim_config_load(const char *path, sim_config_t *out_config, char *out_error, size_t error_capacity);
+/** Receives non-NUL-terminated JSON chunks <=512 bytes; concatenate without separators.
+ * Buffer is borrowed for this call only. Return zero or negative errno to abort.
+ */
+typedef int (*sim_config_emit_cb_t)(const char *data, size_t len, void *cb_user);
+/** Serialize a validated effective configuration, including defaults, for startup evidence.
+ * No I/O is performed. All pointers are required except cb_user. Allocates only during this call.
+ */
+int sim_config_snapshot(const sim_config_t *config, sim_config_emit_cb_t emit_cb, void *cb_user);
 #endif

@@ -24,6 +24,9 @@ static pthread_t s_log_sink_thread;
 static bool s_log_sink_started, s_log_sink_pending, s_log_sink_stopping;
 static log_sink_drain_cb_t s_log_sink_drain_cb;
 static void *s_log_sink_cb_user;
+static char s_log_sink_prefix[7];
+static size_t s_log_sink_prefix_len;
+static bool s_log_sink_line_known, s_log_sink_file_only;
 
 void log_sink_fail(int error)
 {
@@ -168,6 +171,9 @@ int log_sink_open(bool file_enabled, const char *path, const char *role)
     }
     atomic_store(&s_log_sink_error, 0);
     s_log_sink_path[0] = '\0';
+    s_log_sink_prefix_len = 0u;
+    s_log_sink_line_known = false;
+    s_log_sink_file_only = false;
     if (!file_enabled)
     {
         return 0;
@@ -219,6 +225,51 @@ const char *log_sink_path(void)
 {
     return s_log_sink_path;
 }
+static void log_sink_console_write(const char *data, size_t len)
+{
+    if (len != 0u && fwrite(data, 1u, len, stdout) != len)
+    {
+        log_sink_fail(-EIO);
+    }
+}
+/** The async ring may split records at any byte, including inside the tag. */
+static void log_sink_console_filter(const char *data, size_t len)
+{
+    for (size_t pos = 0u; pos < len;)
+    {
+        if (!s_log_sink_line_known)
+        {
+            char byte = data[pos++];
+            s_log_sink_prefix[s_log_sink_prefix_len++] = byte;
+            if (s_log_sink_prefix_len == sizeof(s_log_sink_prefix) || byte == '\n')
+            {
+                s_log_sink_file_only = s_log_sink_prefix_len == sizeof(s_log_sink_prefix) &&
+                                       memcmp(s_log_sink_prefix, "DETAIL ", sizeof(s_log_sink_prefix)) == 0;
+                if (!s_log_sink_file_only)
+                {
+                    log_sink_console_write(s_log_sink_prefix, s_log_sink_prefix_len);
+                }
+                s_log_sink_line_known = byte != '\n';
+                s_log_sink_prefix_len = 0u;
+            }
+        }
+        else
+        {
+            const char *newline = memchr(data + pos, '\n', len - pos);
+            size_t count = newline != NULL ? (size_t) (newline - (data + pos)) + 1u : len - pos;
+            if (!s_log_sink_file_only)
+            {
+                log_sink_console_write(data + pos, count);
+            }
+            pos += count;
+            if (newline != NULL)
+            {
+                s_log_sink_line_known = false;
+                s_log_sink_file_only = false;
+            }
+        }
+    }
+}
 void log_sink_write(const char *data, size_t len)
 {
     if (data == NULL && len != 0u)
@@ -226,11 +277,12 @@ void log_sink_write(const char *data, size_t len)
         log_sink_fail(-EINVAL);
         return;
     }
-    if (fwrite(data, 1u, len, stdout) != len || fflush(stdout) != 0)
+    if (s_log_sink_file != NULL && (fwrite(data, 1u, len, s_log_sink_file) != len || fflush(s_log_sink_file) != 0))
     {
         log_sink_fail(-EIO);
     }
-    if (s_log_sink_file != NULL && (fwrite(data, 1u, len, s_log_sink_file) != len || fflush(s_log_sink_file) != 0))
+    log_sink_console_filter(data, len);
+    if (fflush(stdout) != 0)
     {
         log_sink_fail(-EIO);
     }
@@ -242,6 +294,15 @@ int log_sink_error(void)
 int log_sink_close(void)
 {
     (void) log_sink_stop();
+    if (s_log_sink_prefix_len != 0u)
+    {
+        log_sink_console_write(s_log_sink_prefix, s_log_sink_prefix_len);
+        s_log_sink_prefix_len = 0u;
+        if (fflush(stdout) != 0)
+        {
+            log_sink_fail(-EIO);
+        }
+    }
     if (s_log_sink_file != NULL)
     {
         if (fclose(s_log_sink_file) != 0)

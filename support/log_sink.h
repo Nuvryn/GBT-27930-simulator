@@ -23,7 +23,9 @@ void log_sink_unlock(void);
 void log_sink_fail(int error);
 /** Actual file name, empty when disabled; immutable until close. */
 const char *log_sink_path(void);
-/** Worker-only write; records persistent I/O errors. No producer-side file access. */
+/** Worker-only write; records persistent I/O errors. No producer-side file access.
+ * Linux sends reserved "DETAIL " tagged lines to the file only, even across chunks.
+ */
 void log_sink_write(const char *data, size_t len);
 /** First I/O failure, 0 if healthy. */
 int log_sink_error(void);

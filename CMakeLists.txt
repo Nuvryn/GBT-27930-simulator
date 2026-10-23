@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(gbt27930_simulator C)
+project(gbt27930_simulator VERSION 0.1.0 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -19,6 +19,16 @@ if(NOT (PLATFORM STREQUAL "linux" OR PLATFORM STREQUAL "zephyr"))
 endif()
 
 set(ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_custom_target(sim_build_metadata
+    COMMAND ${CMAKE_COMMAND}
+        "-DOUTPUT_DIR=${CMAKE_CURRENT_BINARY_DIR}/generated"
+        "-DSIM_VERSION=${PROJECT_VERSION}"
+        "-DSIM_TARGET=${PLATFORM}/${CMAKE_SYSTEM_PROCESSOR}"
+        "-DSIM_COMPILER=${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}"
+        -P "${ROOT}/cmake/generate_build_info.cmake"
+    BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/generated/sim_build_info_generated.h"
+    VERBATIM)
 
 # ---------------------------------------------------------------------------
 # Platform libraries. Each backend exposes its contract include dir:
@@ -123,7 +133,10 @@ set_source_files_properties(backends/support/${PLATFORM}/log_retention.c PROPERT
 set_source_files_properties(backends/support/${PLATFORM}/can_capture.c PROPERTIES
     COMPILE_OPTIONS "-Wall;-Wextra;-Werror;-Wconversion;-Wsign-conversion;-Wstrict-prototypes")
 add_library(sim_core STATIC app/protocol/gbt27930_codec.c app/config/sim_config.c
+    app/config/sim_config_snapshot.c app/simulator/sim_build_info.c
     app/logging/sim_log.c app/transport/j1939_tp.c app/fault_injection/sim_fault.c app/simulator/sim_engine.c)
+add_dependencies(sim_core sim_build_metadata)
+target_include_directories(sim_core PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated)
 target_include_directories(sim_core PUBLIC ${ROOT}/app)
 target_link_libraries(sim_core PUBLIC scaffold_support opensaej1939 cjson easylogger)
 target_compile_options(sim_core PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion -Wstrict-prototypes)

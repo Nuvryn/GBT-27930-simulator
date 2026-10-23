@@ -1,9 +1,11 @@
 /** @file test_sim_core.c @brief Independent wire vectors and controlled-time TP regression. */
 #include "config/sim_config.h"
 #include "transport/j1939_tp.h"
+#include "cJSON.h"
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #define TEST_CHECK(expr)                                            \
     do                                                              \
     {                                                               \
@@ -194,6 +196,54 @@ static int test_tp_boundaries(void)
     j1939_tp_destroy(sender.tp);
     return 0;
 }
+static size_t s_snapshot_allocations, s_snapshot_fail_after;
+static void *snapshot_allocate(size_t size)
+{
+    if (s_snapshot_allocations++ >= s_snapshot_fail_after)
+    {
+        return NULL;
+    }
+    return malloc(size);
+}
+static int snapshot_discard(const char *data, size_t len, void *cb_user)
+{
+    (void) cb_user;
+    return data != NULL && len > 0u && len <= 512u ? 0 : -EINVAL;
+}
+static int snapshot_reject(const char *data, size_t len, void *cb_user)
+{
+    (void) data;
+    (void) len;
+    (void) cb_user;
+    return -EIO;
+}
+static int test_snapshot_failures(void)
+{
+    sim_config_t config;
+    sim_config_defaults(&config);
+    TEST_CHECK(sim_config_snapshot(NULL, snapshot_discard, NULL) == -EINVAL);
+    TEST_CHECK(sim_config_snapshot(&config, NULL, NULL) == -EINVAL);
+    TEST_CHECK(sim_config_snapshot(&config, snapshot_reject, NULL) == -EIO);
+    cJSON_Hooks hooks = {.malloc_fn = snapshot_allocate, .free_fn = free};
+    cJSON_InitHooks(&hooks);
+    s_snapshot_allocations = 0u;
+    s_snapshot_fail_after = SIZE_MAX;
+    int rc = sim_config_snapshot(&config, snapshot_discard, NULL);
+    size_t allocations = s_snapshot_allocations;
+    cJSON_InitHooks(NULL);
+    TEST_CHECK(rc == 0 && allocations > 100u);
+    const size_t failures[] = {0u, 1u, 100u, allocations / 2u, allocations - 1u};
+    for (size_t idx = 0u; idx < sizeof(failures) / sizeof(failures[0]); idx++)
+    {
+        s_snapshot_allocations = 0u;
+        s_snapshot_fail_after = failures[idx];
+        cJSON_InitHooks(&hooks);
+        rc = sim_config_snapshot(&config, snapshot_discard, NULL);
+        cJSON_InitHooks(NULL);
+        TEST_CHECK(rc == -ENOMEM);
+    }
+    return 0;
+}
 static int test_config(void)
 {
     sim_config_t config;
@@ -218,7 +268,7 @@ static int test_config(void)
 }
 int main(void)
 {
-    if (test_codec() != 0 || test_config() != 0 || test_tp() != 0 || test_tp_boundaries() != 0)
+    if (test_codec() != 0 || test_config() != 0 || test_snapshot_failures() != 0 || test_tp() != 0 || test_tp_boundaries() != 0)
     {
         return 1;
     }

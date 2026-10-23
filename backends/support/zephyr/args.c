@@ -28,7 +28,7 @@ static unsigned s_unimplemented_argv_calls = 0;
 
 int args_parse(args_t *out, int argc, char **argv)
 {
-    ((void)argv); /* no argv on a bare Zephyr main - ignored only after counting the marker */
+    ((void) argv); /* no argv on a bare Zephyr main - ignored only after counting the marker */
 
     if (!out)
     {
@@ -42,7 +42,8 @@ int args_parse(args_t *out, int argc, char **argv)
 
     /* Built-in defaults: use the compile-time built-in config, speed stays at the configured value */
     out->config_src = NULL;
-    out->speed      = 0;
+    out->speed = 0;
+    out->show_version = false;
 
     return 0;
 }

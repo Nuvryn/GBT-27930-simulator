@@ -11,7 +11,7 @@ Zephyr / Linux 已提供 device 模型、DTS/DT、boot 编排，所以框架**�
 | 契约头 | `backends/support/linux` | `backends/support/zephyr` | 为什么是项目缺口 |
 |---|---|---|---|
 | `console.h` | stdout 输出 + SIGINT/SIGTERM 停止钩子 | 丢弃字节并计数，停止钩子只存不触发 | 终端输出 / 日志 sink 属应用侧 |
-| `args.h` | 解析 `--config/--speed/--help/-h` | 无命令行，返回内置默认 | 启动参数形态是应用/平台约定 |
+| `args.h` | 解析 `--config/--speed/--version/--help/-h` | 无命令行，返回内置默认 | 启动参数形态是应用/平台约定 |
 | `config_source.h` | 文件后端（`fopen` + `fread`） | 编译期内置文本 | 配置源是应用领域 |
 | `can_bus.h` | `hal_can` 适配器（256 帧 RX 环 + 确定性发送） | 骨架 | 框架 `hal_can` 是异步契约；应用需要"一帧完成再发下一帧"的确定性 |
 
@@ -44,6 +44,8 @@ Zephyr 侧未实现的函数返回 `-ENOSYS`/`NULL`（或**有注释的计数丢
 > 说明：`support/` 是**项目自建**的轴（上游框架没有），因此命名/内容由项目自行维护，无需与任何上游同步。
 
 ## 日志与抓包契约
+
+Linux `args_parse` 遇到 `--version` 设置 `show_version` 并返回 0，由正式入口打印只读构建信息并退出；无需配置、CAN 或文件初始化。Zephyr 的该字段固定 false。`log_sink_write` 的 Linux 后端保留完整文件内容，按行过滤 `DETAIL ` 标签的控制台输出，跨缓冲边界仍保留路由状态。
 
 `log_retention.h` 提供自动会话登记和租约释放：每个角色保留最新 3 次自动记录，捕获文件可追加到同一次登记。只接收已创建的自动路径；显式路径不登记。Linux 使用目录内归属标记、flock 和限定文件名清理；Zephyr 对非空登记返回 ENOSYS，无文件登记为空操作。释放必须晚于所有输出文件关闭，调用仅发生在初始化/退出线程。
 
