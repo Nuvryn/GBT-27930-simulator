@@ -25,7 +25,7 @@ static lv_obj_t *find_start(lv_obj_t *object)
     if (lv_obj_check_type(object, &lv_button_class))
     {
         lv_obj_t *child = lv_obj_get_child(object, 0);
-        if (child != NULL && lv_obj_check_type(child, &lv_label_class) && strcmp(lv_label_get_text(child), "Start charging") == 0)
+        if (child != NULL && lv_obj_check_type(child, &lv_label_class) && strcmp(lv_label_get_text(child), "开始充电") == 0)
         {
             return object;
         }

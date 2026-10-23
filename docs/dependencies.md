@@ -29,3 +29,7 @@ Open-SAE-J1939 使用其单独的快照清单。升级时固定新提交、更�
 用户指定的 `candump` 来自 [can-utils](https://github.com/linux-can/can-utils)。它以独立进程运行，不链接或复制源码到本工程，故不计入 vendored 文件哈希清单。Linux/ARM 系统启用抓包时需自行提供对应架构的工具；默认按 PATH 查找。WSL 验证包版本为 Ubuntu 的 2020.11.0-1。升级工具或目标镜像后需重跑抓包检查；构建不自动下载和安装该工具。
 
 LVGL 导入 src、include、libs 及根公共头文件、许可证和配置模板，均保持上游内容不变。项目自己的 lv_conf.h 和平台适配位于自有目录；CMake 禁用外部绘制引擎，不启用或下载额外依赖。固定文件的 LF 归一化校验登记在统一依赖清单，SIM_UI=OFF 不构建 LVGL。
+
+## UI 中文字体
+
+用户确认采用思源黑体 Source Han Sans SC 2.004R，SIL OFL 1.1 许可。仅保存界面使用的派生字形源码、字符清单及许可证；由官方 lv_font_conv 1.5.3（MIT，仅开发工具）生成。来源、原始字体哈希及生成方法见 third_party/source_han_sans/README.md。

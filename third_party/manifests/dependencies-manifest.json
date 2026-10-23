@@ -7639,6 +7639,34 @@
           "sha256_lf": "7d6686ef49f6bc164434448be0162a11f2bc198a8d27a0965ad28ab4dd0a1fa2"
         }
       ]
+    },
+    {
+      "name": "source_han_sans_ui",
+      "repository": "https://github.com/adobe-fonts/source-han-sans",
+      "version": "2.004R",
+      "directory": "third_party/source_han_sans",
+      "files": [
+        {
+          "path": "LICENSE.txt",
+          "upstream_path": "LICENSE.txt",
+          "sha256_lf": "f55c2d43dd905011515f5e46ba78d180027e314ef8ccaaf53a9e88fe316767cd"
+        },
+        {
+          "path": "README.md",
+          "upstream_path": "derived UI subset (see README.md)",
+          "sha256_lf": "21598b3eb4841b018e09e62bf428f5357907a25d83bfbcc25b00ea7cd2f25a16"
+        },
+        {
+          "path": "sim_ui_font_16.c",
+          "upstream_path": "derived UI subset (see README.md)",
+          "sha256_lf": "cb86d26e1bb1387939877707317fe14dbc0b63762c99cc164972258ff01f2087"
+        },
+        {
+          "path": "ui_chars.txt",
+          "upstream_path": "derived UI subset (see README.md)",
+          "sha256_lf": "fba93ae140ca3639b4062654eefdbef511346e9390e24ca52bfa8dd346143ce4"
+        }
+      ]
     }
   ]
 }

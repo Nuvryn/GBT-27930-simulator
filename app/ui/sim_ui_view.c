@@ -1,4 +1,4 @@
-/** @file sim_ui_view.c @brief Five English touch pages; flow follows structured engine state. */
+/** @file sim_ui_view.c @brief Five Chinese touch pages; flow follows structured engine state. */
 #include "ui/sim_ui_view.h"
 #include "simulator/sim_build_info.h"
 #include "osal/osal.h"
@@ -22,6 +22,113 @@ struct sim_ui_view_s
     uint32_t log_cursor, log_start;
     char log_text[32768], config_path[256];
 };
+static const char *ui_stage_name(sim_stage_t stage)
+{
+    static const char *const names[] = {"握手", "辨识", "参数配置", "准备就绪", "充电", "中止", "统计", "异常恢复", "结束", "待机"};
+    return (unsigned) stage <= SIM_STAGE_IDLE ? names[stage] : "未知阶段";
+}
+static const char *ui_field_name(const char *key)
+{
+    static const struct
+    {
+        const char *key;
+        const char *name;
+    } fields[] = {
+        {"bhm_max_voltage_mv", "最高允许充电电压"},
+        {"crm_result", "辨识结果"},
+        {"charger_id", "充电机编号"},
+        {"battery_type", "电池类型"},
+        {"battery_capacity_mah", "额定容量"},
+        {"battery_rated_voltage_mv", "额定总电压"},
+        {"battery_serial", "电池组序号"},
+        {"battery_year", "生产年份"},
+        {"battery_month", "生产月份"},
+        {"battery_day", "生产日期"},
+        {"battery_charge_count", "累计充电次数"},
+        {"battery_owner", "产权标识"},
+        {"bcp_cell_max_voltage_mv", "单体最高允许电压"},
+        {"bcp_max_current_ma", "最大允许充电电流"},
+        {"battery_energy_wh", "标称总能量"},
+        {"bcp_max_voltage_mv", "最高允许总电压"},
+        {"bcp_max_temperature_degc", "最高允许温度"},
+        {"bcp_soc_permille", "当前荷电状态"},
+        {"bcp_voltage_mv", "当前总电压"},
+        {"cml_max_voltage_mv", "最高输出电压"},
+        {"cml_min_voltage_mv", "最低输出电压"},
+        {"cml_max_current_ma", "最大输出电流"},
+        {"cml_min_current_ma", "最小输出电流"},
+        {"bro_ready", "BMS 就绪状态"},
+        {"cro_ready", "充电机就绪状态"},
+        {"bcl_voltage_mv", "需求电压"},
+        {"bcl_current_ma", "需求电流"},
+        {"bcl_mode", "充电模式"},
+        {"bcs_voltage_mv", "测量总电压"},
+        {"bcs_current_ma", "测量电流"},
+        {"bcs_cell_max_voltage_mv", "最高单体电压"},
+        {"bcs_cell_group", "最高单体电压组号"},
+        {"bcs_soc_pct", "当前荷电状态"},
+        {"remaining_minutes", "预计剩余分钟"},
+        {"ccs_voltage_mv", "输出电压"},
+        {"ccs_current_ma", "输出电流"},
+        {"ccs_elapsed_minutes", "累计充电分钟"},
+        {"ccs_allow", "充电允许状态"},
+        {"bsm_cell_index", "最高单体电压编号"},
+        {"bsm_max_temperature_degc", "最高温度"},
+        {"bsm_max_temperature_index", "最高温度探头编号"},
+        {"bsm_min_temperature_degc", "最低温度"},
+        {"bsm_min_temperature_index", "最低温度探头编号"},
+        {"bsm_cell_voltage_state", "单体电压状态"},
+        {"bsm_soc_state", "荷电状态"},
+        {"bsm_current_state", "电流状态"},
+        {"bsm_temperature_state", "温度状态"},
+        {"bsm_insulation_state", "绝缘状态"},
+        {"bsm_connector_state", "连接器状态"},
+        {"bsm_allow", "充电允许状态"},
+        {"bst_reason", "BMS 中止原因"},
+        {"bst_fault", "BMS 中止故障"},
+        {"bst_error", "BMS 中止错误"},
+        {"cst_reason", "充电机中止原因"},
+        {"cst_fault", "充电机中止故障"},
+        {"cst_error", "充电机中止错误"},
+        {"bsd_soc_pct", "结束荷电状态"},
+        {"bsd_cell_min_voltage_mv", "最低单体电压"},
+        {"bsd_cell_max_voltage_mv", "最高单体电压"},
+        {"bsd_min_temperature_degc", "最低温度"},
+        {"bsd_max_temperature_degc", "最高温度"},
+        {"csd_elapsed_minutes", "累计充电分钟"},
+        {"csd_energy_wh", "输出能量"},
+        {"csd_charger_id", "充电机编号"},
+        {"bem_crm_initial", "CRM 初始辨识接收状态"},
+        {"bem_crm_confirm", "CRM 确认辨识接收状态"},
+        {"bem_cml", "CML 接收状态"},
+        {"bem_cro", "CRO 接收状态"},
+        {"bem_ccs", "CCS 接收状态"},
+        {"bem_cst", "CST 接收状态"},
+        {"bem_csd", "CSD 接收状态"},
+        {"cem_brm", "BRM 接收状态"},
+        {"cem_bcp", "BCP 接收状态"},
+        {"cem_bro", "BRO 接收状态"},
+        {"cem_bcs", "BCS 接收状态"},
+        {"cem_bcl", "BCL 接收状态"},
+        {"cem_bst", "BST 接收状态"},
+        {"cem_bsd", "BSD 接收状态"},
+        {"cem_bsm", "BSM 接收状态"},
+        {"cts_second", "时间同步秒"},
+        {"cts_minute", "时间同步分"},
+        {"cts_hour", "时间同步时"},
+        {"cts_day", "时间同步日"},
+        {"cts_month", "时间同步月"},
+        {"cts_year", "时间同步年"},
+    };
+    for (size_t idx = 0u; idx < sizeof(fields) / sizeof(fields[0]); idx++)
+    {
+        if (strcmp(key, fields[idx].key) == 0)
+        {
+            return fields[idx].name;
+        }
+    }
+    return key;
+}
 static lv_obj_t *label(lv_obj_t *parent, const char *text)
 {
     lv_obj_t *obj = lv_label_create(parent);
@@ -33,7 +140,7 @@ static lv_obj_t *label(lv_obj_t *parent, const char *text)
 static void feedback(sim_ui_view_t *view, const char *operation, int rc)
 {
     char text[160];
-    (void) snprintf(text, sizeof(text), "%s: %s (code %d)", operation, rc == 0 ? "Accepted" : (rc == -EBUSY ? "Busy - try again" : "Rejected"), rc);
+    (void) snprintf(text, sizeof(text), "%s：%s（代码 %d）", operation, rc == 0 ? "已接收" : (rc == -EBUSY ? "繁忙，请重试" : "已拒绝"), rc);
     lv_label_set_text(view->feedback, text);
 }
 static lv_obj_t *button(lv_obj_t *parent, const char *text, lv_event_cb_t callback, sim_ui_view_t *view)
@@ -68,17 +175,17 @@ static void start_clicked(lv_event_t *event)
     sim_ui_view_t *view = lv_event_get_user_data(event);
     if (view->dirty)
     {
-        lv_label_set_text(view->feedback, "Apply parameter edits before starting");
+        lv_label_set_text(view->feedback, "请先应用修改后的参数再开始充电");
         return;
     }
     sim_control_request_t request = request_for(view, SIM_CONTROL_START);
-    feedback(view, "Start queued", sim_control_submit(view->control, &request));
+    feedback(view, "开始请求入队", sim_control_submit(view->control, &request));
 }
 static void stop_clicked(lv_event_t *event)
 {
     sim_ui_view_t *view = lv_event_get_user_data(event);
     sim_control_stop(view->control, view->data.status.session_id);
-    lv_label_set_text(view->feedback, "Stop requested; waiting for protocol completion");
+    lv_label_set_text(view->feedback, "已请求停止，等待协议中止流程完成");
 }
 static void edited(lv_event_t *event)
 {
@@ -115,7 +222,7 @@ static void apply_clicked(lv_event_t *event)
         if (rc != 0)
         {
             char text[160];
-            (void) snprintf(text, sizeof(text), "Invalid value: %s (code %d)", gbt27930_field(idx)->key, rc);
+            (void) snprintf(text, sizeof(text), "参数值无效：%s（代码 %d）", gbt27930_field(idx)->key, rc);
             lv_label_set_text(view->feedback, text);
             return;
         }
@@ -126,17 +233,17 @@ static void apply_clicked(lv_event_t *event)
     {
         view->apply_request = request.id;
     }
-    feedback(view, "Apply queued", rc);
+    feedback(view, "应用请求入队", rc);
 }
 static void save_clicked(lv_event_t *event)
 {
     sim_ui_view_t *view = lv_event_get_user_data(event);
     if (view->dirty || view->apply_request != 0u)
     {
-        lv_label_set_text(view->feedback, "Apply parameter edits before saving");
+        lv_label_set_text(view->feedback, "请先应用修改后的参数再保存");
         return;
     }
-    feedback(view, "Save queued", sim_control_save(view->control));
+    feedback(view, "保存请求入队", sim_control_save(view->control));
 }
 static lv_obj_t *input(lv_obj_t *parent, const char *caption, const char *initial, sim_ui_view_t *view, bool parameter)
 {
@@ -191,14 +298,21 @@ static void fault_clicked(lv_event_t *event)
     sim_control_request_t request = request_for(view, SIM_CONTROL_FAULT);
     sim_fault_rule_t *rule = &request.fault;
     lv_dropdown_get_selected_str(view->message, rule->message, sizeof(rule->message));
-    lv_dropdown_get_selected_str(view->stage, rule->stage, sizeof(rule->stage));
+    static const char *const stages[] = {"*", "handshake", "identify", "config", "ready", "charging", "stopping", "statistics", "recovery", "done"};
+    unsigned selected = lv_dropdown_get_selected(view->stage);
+    if (selected >= sizeof(stages) / sizeof(stages[0]))
+    {
+        feedback(view, "注入阶段", -EINVAL);
+        return;
+    }
+    (void) snprintf(rule->stage, sizeof(rule->stage), "%s", stages[selected]);
     rule->receive = lv_dropdown_get_selected(view->direction) == 1u;
     rule->action = (sim_fault_action_t) lv_dropdown_get_selected(view->action);
     uint32_t byte;
     if (unsigned_input(view->count, &rule->count) != 0 || unsigned_input(view->duration, &rule->duration_ms) != 0 ||
         unsigned_input(view->delay, &rule->delay_ms) != 0 || unsigned_input(view->byte, &byte) != 0 || byte > 1784u || unsigned_input(view->value, &rule->value) != 0)
     {
-        feedback(view, "Fault values", -EINVAL);
+        feedback(view, "注入参数", -EINVAL);
         return;
     }
     rule->byte = (uint16_t) byte;
@@ -207,19 +321,19 @@ static void fault_clicked(lv_event_t *event)
     {
         rc = sim_control_submit(view->control, &request);
     }
-    feedback(view, "Enable fault queued", rc);
+    feedback(view, "启用注入请求入队", rc);
 }
 static void cancel_clicked(lv_event_t *event)
 {
     sim_ui_view_t *view = lv_event_get_user_data(event);
     sim_control_request_t request = request_for(view, SIM_CONTROL_CANCEL);
-    feedback(view, "Cancel fault queued", sim_control_submit(view->control, &request));
+    feedback(view, "取消注入请求入队", sim_control_submit(view->control, &request));
 }
 static void pause_clicked(lv_event_t *event)
 {
     sim_ui_view_t *view = lv_event_get_user_data(event);
     view->paused = !view->paused;
-    lv_label_set_text(lv_obj_get_child(view->pause, 0), view->paused ? "Resume display" : "Pause display");
+    lv_label_set_text(lv_obj_get_child(view->pause, 0), view->paused ? "继续显示" : "暂停显示");
 }
 static void clear_clicked(lv_event_t *event)
 {
@@ -271,16 +385,16 @@ sim_ui_view_t *sim_ui_view_create(sim_control_t *control, const char *config_pat
     lv_obj_set_style_bg_color(view->root, lv_color_hex(0x101C2D), 0);
     lv_obj_set_style_text_color(view->root, lv_color_hex(0xE6EDF7), 0);
     lv_obj_set_style_pad_all(view->root, 8, 0);
-    lv_obj_t *heading = label(view->root, "GB/T 27930 Simulator");
-    lv_obj_set_style_text_font(heading, &lv_font_montserrat_18, 0);
-    view->banner = label(view->root, "Manual fault: OFF");
-    view->feedback = label(view->root, "Ready");
+    lv_obj_t *heading = label(view->root, "GB/T 27930 协议模拟器");
+    lv_obj_set_style_text_font(heading, &sim_ui_font_16, 0);
+    view->banner = label(view->root, "手动注入：关闭");
+    view->feedback = label(view->root, "就绪");
     view->tabs = lv_tabview_create(view->root);
     lv_tabview_set_tab_bar_size(view->tabs, 44);
     lv_obj_set_width(view->tabs, LV_PCT(100));
     lv_obj_set_flex_grow(view->tabs, 1);
-    lv_obj_t *home = page(view->tabs, "Home");
-    view->summary = label(home, "Idle");
+    lv_obj_t *home = page(view->tabs, "主页");
+    view->summary = label(home, "待机");
     lv_obj_t *flow = lv_obj_create(home);
     lv_obj_set_width(flow, LV_PCT(100));
     lv_obj_set_height(flow, LV_SIZE_CONTENT);
@@ -294,15 +408,15 @@ sim_ui_view_t *sim_ui_view_create(sim_control_t *control, const char *config_pat
         lv_obj_set_height(view->nodes[idx], 64);
         lv_obj_set_style_pad_all(view->nodes[idx], 7, 0);
         lv_obj_set_flex_grow(view->nodes[idx], 1);
-        view->node_text[idx] = label(view->nodes[idx], sim_stage_name((sim_stage_t) idx));
+        view->node_text[idx] = label(view->nodes[idx], ui_stage_name((sim_stage_t) idx));
     }
-    view->path = label(home, "Actual path: idle");
-    view->wait = label(home, "Waiting for start");
-    view->measurements = label(home, "Peer measurements: unavailable");
-    view->parameters = page(view->tabs, "Parameters");
-    view->apply = button(view->parameters, "Apply for next session", apply_clicked, view);
-    view->save = button(view->parameters, "Save configuration", save_clicked, view);
-    view->save_state = label(view->parameters, "Applied values are separate from unsaved edits");
+    view->path = label(home, "实际路径：待机");
+    view->wait = label(home, "等待开始充电");
+    view->measurements = label(home, "对端数据：暂无有效值");
+    view->parameters = page(view->tabs, "参数设置");
+    view->apply = button(view->parameters, "应用到下一轮", apply_clicked, view);
+    view->save = button(view->parameters, "保存配置", save_clicked, view);
+    view->save_state = label(view->parameters, "编辑后请先应用，保存仅写入已应用的参数");
     for (size_t idx = 0u; gbt27930_field(idx) != NULL; idx++)
     {
         const gbt27930_field_t *field = gbt27930_field(idx);
@@ -310,21 +424,21 @@ sim_ui_view_t *sim_ui_view_create(sim_control_t *control, const char *config_pat
         {
             continue;
         }
-        char initial[40], caption[240], minimum[40], maximum[40], step[40];
+        char initial[40], caption[384], minimum[40], maximum[40], step[40];
         sim_control_format_value(field, view->data.config.values.field[idx], initial, sizeof(initial));
         sim_control_format_value(field, field->minimum, minimum, sizeof(minimum));
         sim_control_format_value(field, field->maximum, maximum, sizeof(maximum));
         sim_control_format_value(field, field->scale < 0 ? -(int64_t) field->scale : field->scale, step, sizeof(step));
-        const char *unit = (strlen(field->key) >= 3u && strcmp(field->key + strlen(field->key) - 3u, "_mv") == 0) ? "V" : ((strlen(field->key) >= 3u && strcmp(field->key + strlen(field->key) - 3u, "_ma") == 0) ? "A" : "physical units in key");
-        (void) snprintf(caption, sizeof(caption), "%s / %s (%s) [%s..%s], step %s", gbt27930_descriptor(field->message)->name, field->key, unit, minimum, maximum, step);
+        const char *unit = (strlen(field->key) >= 3u && strcmp(field->key + strlen(field->key) - 3u, "_mv") == 0) ? "V" : ((strlen(field->key) >= 3u && strcmp(field->key + strlen(field->key) - 3u, "_ma") == 0) ? "A" : "单位见配置键");
+        (void) snprintf(caption, sizeof(caption), "%s / %s（%s）范围 [%s..%s]，步长 %s\n%s", gbt27930_descriptor(field->message)->name, ui_field_name(field->key), unit, minimum, maximum, step, field->key);
         view->fields[idx] = input(view->parameters, caption, initial, view, true);
     }
-    lv_obj_t *controls = page(view->tabs, "Control");
-    view->control_state = label(controls, "Waiting");
-    view->start = button(controls, "Start charging", start_clicked, view);
-    view->stop = button(controls, "Stop charging", stop_clicked, view);
-    label(controls, view->data.config.charger ? "Start sends CHM. Completion returns to idle." : "BMS starts on a valid peer CHM. No local start is required.");
-    lv_obj_t *faults = page(view->tabs, "Faults");
+    lv_obj_t *controls = page(view->tabs, "充电控制");
+    view->control_state = label(controls, "等待");
+    view->start = button(controls, "开始充电", start_clicked, view);
+    view->stop = button(controls, "停止充电", stop_clicked, view);
+    label(controls, view->data.config.charger ? "点击开始发送 CHM，充电结束后返回待机。" : "BMS 等待对端合法 CHM 自动开始，无需手动启动。");
+    lv_obj_t *faults = page(view->tabs, "错误注入");
     char options[256] = "";
     for (unsigned idx = 0u; idx < GBT27930_MESSAGE_COUNT; idx++)
     {
@@ -335,25 +449,25 @@ sim_ui_view_t *sim_ui_view_create(sim_control_t *control, const char *config_pat
         (void) strcat(options, gbt27930_descriptor((gbt27930_message_t) idx)->name);
     }
     (void) strcat(options, "\nTP_CM\nTP_DT");
-    view->enable = button(faults, "Enable manual fault", fault_clicked, view);
-    view->disable = button(faults, "Disable manual fault", cancel_clicked, view);
-    view->message = dropdown(faults, "Message", options);
-    view->stage = dropdown(faults, "Stage", "*\nhandshake\nidentify\nconfig\nready\ncharging\nstopping\nstatistics\nrecovery\ndone");
-    view->direction = dropdown(faults, "Direction", "tx\nrx");
-    view->action = dropdown(faults, "Action", "drop\ndelay\nduplicate\ncorrupt byte\nlength\nCAN id");
-    view->count = input(faults, "Count (0 = unlimited)", "1", view, false);
-    view->duration = input(faults, "Duration after enable (ms, 0 = unlimited)", "0", view, false);
-    view->delay = input(faults, "Delay (ms)", "100", view, false);
-    view->byte = input(faults, "Byte offset (TP_DT sequence = 0)", "0", view, false);
-    view->value = input(faults, "Replacement value (decimal)", "0", view, false);
-    lv_obj_t *logs = page(view->tabs, "Logs / Info");
+    view->enable = button(faults, "启用手动注入", fault_clicked, view);
+    view->disable = button(faults, "关闭手动注入", cancel_clicked, view);
+    view->message = dropdown(faults, "报文", options);
+    view->stage = dropdown(faults, "阶段", "全部阶段\n握手\n辨识\n参数配置\n准备就绪\n充电\n中止\n统计\n异常恢复\n结束");
+    view->direction = dropdown(faults, "方向", "发送（tx）\n接收（rx）");
+    view->action = dropdown(faults, "动作", "丢弃\n延迟\n重复\n修改字节\n修改长度\n修改 CAN 标识符");
+    view->count = input(faults, "命中次数（0 表示不限）", "1", view, false);
+    view->duration = input(faults, "启用后持续时间（ms，0 表示不限）", "0", view, false);
+    view->delay = input(faults, "延迟（ms）", "100", view, false);
+    view->byte = input(faults, "字节偏移（TP_DT 序号位于 0）", "0", view, false);
+    view->value = input(faults, "替换值（十进制）", "0", view, false);
+    lv_obj_t *logs = page(view->tabs, "日志信息");
     const sim_build_info_t *info = sim_build_info_get();
     char text[768];
-    (void) snprintf(text, sizeof(text), "Version: %s | Build: %s | Target: %s\nConfig: %s\nFile log: %s | candump: %s", info->version, info->time_utc, info->target, view->config_path[0] != '\0' ? view->config_path : "No writable source", view->data.config.file_log ? "ON" : "OFF", view->data.config.candump ? "ON" : "OFF");
+    (void) snprintf(text, sizeof(text), "版本：%s | 编译时间：%s | 目标：%s\n配置：%s\n文件日志：%s | candump：%s", info->version, info->time_utc, info->target, view->config_path[0] != '\0' ? view->config_path : "无可写配置来源", view->data.config.file_log ? "开启" : "关闭", view->data.config.candump ? "开启" : "关闭");
     label(logs, text);
-    view->pause = button(logs, "Pause display", pause_clicked, view);
-    button(logs, "Clear display", clear_clicked, view);
-    label(logs, "Filter by tag or text");
+    view->pause = button(logs, "暂停显示", pause_clicked, view);
+    button(logs, "清空显示", clear_clicked, view);
+    label(logs, "按标签或文本筛选（英文键盘）");
     view->filter = lv_textarea_create(logs);
     lv_textarea_set_one_line(view->filter, true);
     lv_obj_set_width(view->filter, LV_PCT(100));
@@ -399,19 +513,19 @@ void sim_ui_view_refresh(sim_ui_view_t *view)
             view->apply_request = 0u;
         }
         char message[128];
-        (void) snprintf(message, sizeof(message), "Request %u completed: %s (code %d)", result.id, result.result == 0 ? "OK" : "Rejected", result.result);
+        (void) snprintf(message, sizeof(message), "请求 %u 已完成：%s（代码 %d）", result.id, result.result == 0 ? "成功" : "已拒绝", result.result);
         lv_label_set_text(view->feedback, message);
     }
     if (view->stop_sequence != view->data.stop_sequence)
     {
         view->stop_sequence = view->data.stop_sequence;
-        feedback(view, "Stop request", view->data.stop_result);
+        feedback(view, "停止请求", view->data.stop_result);
     }
     char text[2048];
-    (void) snprintf(text, sizeof(text), "%s | %u | %s\n%s%s | Session %u | %.1f s | %s %.1f s | Revision %u | Last result %d", view->data.config.charger ? "Charger" : "BMS", view->data.config.version, view->data.config.can_interface, sim_stage_name(status->stage), status->paused ? " (paused)" : "", status->session_id, (double) status->elapsed_ms / 1000.0, status->active ? "Stage" : "Last stage", (double) status->stage_elapsed_ms / 1000.0, status->revision, status->result);
+    (void) snprintf(text, sizeof(text), "%s | %u | %s\n%s%s | 会话 %u | %.1f s | %s %.1f s | 参数版本 %u | 上轮结果 %d", view->data.config.charger ? "充电桩" : "BMS", view->data.config.version, view->data.config.can_interface, ui_stage_name(status->stage), status->paused ? "（暂停中）" : "", status->session_id, (double) status->elapsed_ms / 1000.0, status->active ? "阶段" : "上一阶段", (double) status->stage_elapsed_ms / 1000.0, status->revision, status->result);
     lv_label_set_text(view->summary, text);
     lv_label_set_text(view->control_state, text);
-    (void) snprintf(text, sizeof(text), "Manual fault: %s | Hits: %u | Request %u result %d", status->fault_enabled ? (status->active ? "ACTIVE" : "ARMED for next session") : "OFF", status->fault_hits, view->data.request_id, view->data.request_result);
+    (void) snprintf(text, sizeof(text), "手动注入：%s | 已命中 %u 次 | 请求 %u 结果 %d", status->fault_enabled ? (status->active ? "生效中" : "已预置到下一轮") : "关闭", status->fault_hits, view->data.request_id, view->data.request_result);
     lv_label_set_text(view->banner, text);
     lv_obj_set_style_text_color(view->banner, lv_color_hex(status->fault_enabled ? 0xFFBC52 : 0x8BDAC2), 0);
     bool visited[SIM_STAGE_IDLE] = {false};
@@ -428,12 +542,12 @@ void sim_ui_view_refresh(sim_ui_view_t *view)
     {
         bool current = status->active && (unsigned) status->stage == idx;
         bool error = status->failed && (unsigned) status->error_stage == idx;
-        const char *state = error ? "Error" : (current ? "Current" : (visited[idx] ? "Visited" : "Ahead"));
-        (void) snprintf(text, sizeof(text), "%s\n%s", sim_stage_name((sim_stage_t) idx), state);
+        const char *state = error ? "异常" : (current ? "当前" : (visited[idx] ? "已进入" : "未进入"));
+        (void) snprintf(text, sizeof(text), "%s\n%s", ui_stage_name((sim_stage_t) idx), state);
         lv_label_set_text(view->node_text[idx], text);
         lv_obj_set_style_bg_color(view->nodes[idx], lv_color_hex(error ? 0xF5B8B8 : (current ? 0xA9D6FF : (visited[idx] ? 0xBEE3D3 : 0xE4E8EF))), 0);
     }
-    (void) snprintf(text, sizeof(text), "Actual path: ");
+    (void) snprintf(text, sizeof(text), "实际路径：");
     unsigned path_count = retained < 12u ? retained : 12u;
     for (unsigned idx = 0u; idx < path_count; idx++)
     {
@@ -442,14 +556,14 @@ void sim_ui_view_refresh(sim_ui_view_t *view)
         {
             append_text(text, sizeof(text), " > ");
         }
-        append_text(text, sizeof(text), sim_stage_name(step->stage));
+        append_text(text, sizeof(text), ui_stage_name(step->stage));
     }
     if (!status->active)
     {
-        append_text(text, sizeof(text), " > idle");
+        append_text(text, sizeof(text), " > 待机");
     }
     lv_label_set_text(view->path, text);
-    (void) snprintf(text, sizeof(text), "Waiting / monitoring: ");
+    (void) snprintf(text, sizeof(text), "等待或监控：");
     for (unsigned idx = 0u; idx < GBT27930_MESSAGE_COUNT; idx++)
     {
         if ((status->waiting_messages & (1u << idx)) != 0u)
@@ -458,7 +572,7 @@ void sim_ui_view_refresh(sim_ui_view_t *view)
             append_text(text, sizeof(text), " ");
         }
     }
-    const char *conditions[] = {"self-test ", "precharge ", "local ready ", "peer ready ", "local ready sent ", "BCP update completion ", "simulated auxiliary power off ", "recovery delay "};
+    const char *conditions[] = {"自检 ", "预充 ", "本端就绪 ", "对端就绪 ", "本端就绪报文发送 ", "BCP 更新完成 ", "模拟辅助电源关闭 ", "恢复等待 "};
     for (unsigned idx = 0u; idx < 8u; idx++)
     {
         if ((status->conditions & (1u << idx)) != 0u)
@@ -468,11 +582,11 @@ void sim_ui_view_refresh(sim_ui_view_t *view)
     }
     if (!status->active)
     {
-        append_text(text, sizeof(text), view->data.config.charger ? "Enter a new session with Start" : "peer CHM");
+        append_text(text, sizeof(text), view->data.config.charger ? "点击开始进入下一轮" : "对端 CHM");
     }
     if (status->error[0] != '\0')
     {
-        append_text(text, sizeof(text), "\nLast error: ");
+        append_text(text, sizeof(text), "\n最近错误：");
         append_text(text, sizeof(text), status->error);
         if (status->error_message < GBT27930_MESSAGE_COUNT)
         {
@@ -482,26 +596,26 @@ void sim_ui_view_refresh(sim_ui_view_t *view)
     }
     if (status->history_count > SIM_STAGE_HISTORY)
     {
-        append_text(text, sizeof(text), "\nOlder transitions evicted (history gap)");
+        append_text(text, sizeof(text), "\n较早的状态记录已淘汰，历史不完整");
     }
     lv_label_set_text(view->wait, text);
     const gbt27930_values_t *local = status->active ? &status->local : &view->data.config.values;
-    (void) snprintf(text, sizeof(text), "Local simulated: %s voltage %.1f V | current %.1f A\n", view->data.config.charger ? "capability" : "demand", (double) gbt27930_get(local, view->data.config.charger ? "cml_max_voltage_mv" : "bcl_voltage_mv") / 1000.0, (double) gbt27930_get(local, view->data.config.charger ? "cml_max_current_ma" : "bcl_current_ma") / 1000.0);
+    (void) snprintf(text, sizeof(text), "本端模拟：%s电压 %.1f V | 电流 %.1f A\n", view->data.config.charger ? "能力" : "需求", (double) gbt27930_get(local, view->data.config.charger ? "cml_max_voltage_mv" : "bcl_voltage_mv") / 1000.0, (double) gbt27930_get(local, view->data.config.charger ? "cml_max_current_ma" : "bcl_current_ma") / 1000.0);
     gbt27930_message_t measurement = view->data.config.charger ? GBT27930_BCL : GBT27930_CCS;
     if (status->active && (status->peer_valid_messages & (1u << measurement)) != 0u)
     {
         char peer[160];
-        (void) snprintf(peer, sizeof(peer), "Peer reported: %.1f V | %.1f A", (double) gbt27930_get(&status->peer, view->data.config.charger ? "bcl_voltage_mv" : "ccs_voltage_mv") / 1000.0, (double) gbt27930_get(&status->peer, view->data.config.charger ? "bcl_current_ma" : "ccs_current_ma") / 1000.0);
+        (void) snprintf(peer, sizeof(peer), "对端上报：%.1f V | %.1f A", (double) gbt27930_get(&status->peer, view->data.config.charger ? "bcl_voltage_mv" : "ccs_voltage_mv") / 1000.0, (double) gbt27930_get(&status->peer, view->data.config.charger ? "bcl_current_ma" : "ccs_current_ma") / 1000.0);
         append_text(text, sizeof(text), peer);
     }
     else
     {
-        append_text(text, sizeof(text), "Peer reported: unavailable / expired");
+        append_text(text, sizeof(text), "对端上报：未收到或已过期");
     }
     if (view->data.config.charger && status->active && (status->peer_valid_messages & (1u << GBT27930_BCS)) != 0u)
     {
         char soc[64];
-        (void) snprintf(soc, sizeof(soc), " | Peer SOC %" PRId64 "%%", gbt27930_get(&status->peer, "bcs_soc_pct"));
+        (void) snprintf(soc, sizeof(soc), " | 对端 SOC %" PRId64 "%%", gbt27930_get(&status->peer, "bcs_soc_pct"));
         append_text(text, sizeof(text), soc);
     }
     lv_label_set_text(view->measurements, text);
@@ -518,9 +632,9 @@ void sim_ui_view_refresh(sim_ui_view_t *view)
             disabled(view->fields[idx], status->active || view->apply_request != 0u);
         }
     }
-    (void) snprintf(text, sizeof(text), "Edits: %s | Applied revision %u | Saved revision %u | Save: %s (code %d)", view->dirty ? "not applied" : "applied", status->revision, view->data.saved_revision, view->data.saving ? "working" : (status->revision == view->data.saved_revision ? "saved" : "unsaved"), view->data.save_result);
+    (void) snprintf(text, sizeof(text), "编辑：%s | 已应用版本 %u | 已保存版本 %u | 保存：%s（代码 %d）", view->dirty ? "未应用" : "已应用", status->revision, view->data.saved_revision, view->data.saving ? "处理中" : (status->revision == view->data.saved_revision ? "已保存" : "未保存"), view->data.save_result);
     lv_label_set_text(view->save_state, text);
-    (void) snprintf(text, sizeof(text), "UI log evictions / skips: %u | %s", view->data.log_dropped, view->paused ? "paused" : "live");
+    (void) snprintf(text, sizeof(text), "界面日志淘汰或跳过：%u | %s", view->data.log_dropped, view->paused ? "已暂停" : "实时显示");
     lv_label_set_text(view->log_state, text);
     if (!view->paused)
     {

@@ -1,6 +1,7 @@
 /** @file test_sim_ui.c @brief Offscreen LVGL with actual widgets, touch input and paired protocol engines. */
 #include "ui/sim_ui_view.h"
 #include "logging/sim_log.h"
+#include "src/misc/lv_text_private.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -219,7 +220,7 @@ static void run_pair(unsigned version, bool gui_charger, const char *directory)
         sim_control_view_t data;
         CHECK(sim_control_read(control, &data) == 0 && !data.status.active && data.status.stage == SIM_STAGE_IDLE && data.status.result == 1);
         CHECK(data.status.history_count >= 7u && !data.status.fault_enabled);
-        CHECK(strstr(lv_label_get_text(sim_ui_view_widget(view, "summary")), "idle") != NULL);
+        CHECK(strstr(lv_label_get_text(sim_ui_view_widget(view, "summary")), "待机") != NULL);
         now += 10000u;
     }
     sim_log_observe(NULL, NULL);
@@ -279,8 +280,27 @@ static void failed_flow(void)
 }
 int main(int argc, char **argv)
 {
-    CHECK(argc == 2);
+    CHECK(argc == 3);
     lv_init();
+    /* Every translated glyph must resolve to a real bitmap, never a placeholder. */
+    FILE *characters = fopen(argv[2], "rb");
+    CHECK(characters != NULL);
+    char text[4096];
+    size_t length = fread(text, 1u, sizeof(text) - 1u, characters);
+    CHECK(!ferror(characters) && feof(characters));
+    CHECK(fclose(characters) == 0);
+    text[length] = '\0';
+    for (uint32_t offset = 0u; text[offset] != '\0';)
+    {
+        uint32_t codepoint = lv_text_encoded_next(text, &offset);
+        if (codepoint <= 32u)
+        {
+            continue;
+        }
+        lv_font_glyph_dsc_t glyph;
+        CHECK(lv_font_get_glyph_dsc(LV_FONT_DEFAULT, &glyph, codepoint, 0u));
+        CHECK(!glyph.is_placeholder);
+    }
     width = 800u;
     height = 480u;
     pixels = calloc((size_t) width * height, 4u);
