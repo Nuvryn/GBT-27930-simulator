@@ -13,6 +13,8 @@ Linux 支持 `gbt27930_simulator --version` 查询软件版本、UTC 构建时�
 
 依赖使用已经确认的 Open-SAE-J1939、cJSON、EasyLogger 固定源码；构建无需下载。新增库必须先征得使用者同意。来源、许可和哈希校验见 [依赖说明](docs/dependencies.md)。
 
+已确认采用 LVGL v9.6.0 的触屏 UI 尚未实施，功能范围、充电流程图及分阶段验收见 [UI 开发计划](docs/ui-development-plan.md)。
+
 ## 构建与运行
 
 在 Linux / WSL 根目录运行，需要 GCC、CMake、Ninja；测试另需 Python 3：
