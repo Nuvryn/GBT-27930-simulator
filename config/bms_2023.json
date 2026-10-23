@@ -1,5 +1,6 @@
 {
   "role": "bms",
+  "start_mode": "manual",
   "version": 2023,
   "candump": false,
   "can_interface": "can0",

@@ -32,6 +32,7 @@ def main():
              ({**base, "parameters": {"bro_ready": 1}}, "parameters"),
              ({**base, "unknown": 1}, "unknown"),
              ({**base, "candump": "yes"}, "candump"),
+             ({**base, "start_mode": 1}, "start_mode"),
              ({**base, "candump_path": 1}, "candump_path"),
              ({**base, "source": 1, "peer": 1}, "cross-field"),
              ({**base, "file_log": True, "log_path": str(directory / "missing/file.log")}, "log initialization failed"),
@@ -62,7 +63,7 @@ def main():
         text = path.read_text()
         effective = snapshot_from_log(text)
         role = path.stem.split("_")[-1]
-        if (effective["role"] != role or effective["dt_interval_ms"] != 10 or effective["file_log"] is not True
+        if (effective["role"] != role or effective["start_mode"] != "auto" or effective["dt_interval_ms"] != 10 or effective["file_log"] is not True
                 or len(effective["messages"]) != 22 or "software_version=0.1.0" not in text or "compiler=" not in text):
             print("FAIL: default configuration/build evidence")
             return 1

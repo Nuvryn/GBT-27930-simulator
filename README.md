@@ -26,6 +26,8 @@ cmake --build build -j
 ./build/gbt27930_simulator --config config/bms_2015.json
 ```
 
+示例配置启用 `start_mode=manual`：桩端按空行 Enter 开始，BMS 等待对端 CHM；正常结束或异常处理结束后继续待机，无需重启进程。充电中 Ctrl-C 请求中止，待机时 Ctrl-C 退出。旧配置省略该项仍保持 `auto` 单次运行。
+
 默认配置使用 `can0`，2023 示例位于 `config/charger_2023.json`、`config/bms_2023.json`。`config/default.json` 是 2015 桩端。真实 CAN 的接口、250 kbit/s 速率和权限由系统预先配置；运行时不修改链路。默认使用真实时间，只有 `software_test=true` 才允许加速。
 
 配置非法、CAN 或日志初始化失败、通信异常及会话耗尽均返回非零。正常统计完成返回 0。即使通信异常后重连成功，本轮测试仍保留失败结果，便于发现注入的异常。

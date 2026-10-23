@@ -133,7 +133,7 @@ set_source_files_properties(backends/support/${PLATFORM}/log_retention.c PROPERT
 set_source_files_properties(backends/support/${PLATFORM}/can_capture.c PROPERTIES
     COMPILE_OPTIONS "-Wall;-Wextra;-Werror;-Wconversion;-Wsign-conversion;-Wstrict-prototypes")
 add_library(sim_core STATIC app/protocol/gbt27930_codec.c app/config/sim_config.c
-    app/config/sim_config_snapshot.c app/simulator/sim_build_info.c
+    app/config/sim_config_snapshot.c app/simulator/sim_build_info.c app/simulator/sim_session.c
     app/logging/sim_log.c app/transport/j1939_tp.c app/fault_injection/sim_fault.c app/simulator/sim_engine.c)
 add_dependencies(sim_core sim_build_metadata)
 target_include_directories(sim_core PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated)
@@ -189,6 +189,12 @@ if(BUILD_TESTING AND PLATFORM STREQUAL "linux")
     add_executable(test_sim_engine tests/test_sim_engine.c)
     target_link_libraries(test_sim_engine PRIVATE sim_core)
     add_test(NAME sim_engine COMMAND test_sim_engine)
+    add_executable(test_sim_session tests/test_sim_session.c)
+    target_link_libraries(test_sim_session PRIVATE sim_core)
+    target_compile_options(test_sim_session PRIVATE -Wall -Wextra -Werror -Wconversion -Wsign-conversion)
+    add_test(NAME sim_session COMMAND test_sim_session)
+    add_test(NAME manual_sessions COMMAND ${Python3_EXECUTABLE} ${ROOT}/tests/test_manual_sessions.py $<TARGET_FILE:gbt27930_simulator>)
+    set_tests_properties(manual_sessions PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 45 RESOURCE_LOCK vcan0)
     add_test(NAME simulator_cli COMMAND ${Python3_EXECUTABLE} ${ROOT}/tests/test_simulator_cli.py $<TARGET_FILE:gbt27930_simulator>)
     add_test(NAME simulator_scenarios COMMAND ${Python3_EXECUTABLE} ${ROOT}/tests/run_scenarios.py --build-dir ${CMAKE_BINARY_DIR})
     set_tests_properties(simulator_scenarios PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 90 RESOURCE_LOCK vcan0)

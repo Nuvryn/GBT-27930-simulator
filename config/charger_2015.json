@@ -1,5 +1,6 @@
 {
   "role": "charger",
+  "start_mode": "manual",
   "version": 2015,
   "file_log": true,
   "candump": false,

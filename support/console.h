@@ -20,36 +20,45 @@
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-/**
+    /**
  * @brief Write @p len bytes to the console output stream.
  * @param data Byte buffer to write. A NULL pointer with a non-zero @p len is a
  *             guarded no-op (never dereferenced).
  */
-void console_out(const char *data, size_t len);
+    void console_out(const char *data, size_t len);
 
-/**
+    /**
  * @brief Formatted console output (printf-style).
  * @return The printf-style count (number of characters that would have been
  *         written), or 0 when @p fmt is NULL. Truncation and negative return
  *         semantics follow vsnprintf.
  */
-int  console_printf(const char *fmt, ...);
+    int console_printf(const char *fmt, ...);
 
-/** @brief Flush the console output stream (fflush(stdout) on host). */
-void console_flush(void);
+    /** @brief Flush the console output stream (fflush(stdout) on host). */
+    void console_flush(void);
 
-/**
+    /**
  * @brief Register a board-level "stop" hook (Ctrl-C / termination).
  * @param fn Callback invoked on SIGINT/SIGTERM in the host backend; NULL
  *           restores the default signal handling. The zephyr skeleton only
  *           stores the callback and never fires it.
  */
-void console_set_stop_handler(void (*fn)(void));
+    void console_set_stop_handler(void (*fn)(void));
+    /** Nonblocking stdin event: 0=no blank line, 1=Enter, 2=EOF, negative errno=error.
+ * Single consumer only. Nonempty lines are ignored; no command parser is used.
+ * Linux uses canonical terminal input or a pipe; Zephyr returns -ENOSYS.
+ */
+    int console_input_poll(void);
+    /** True after SIGTERM; separate application shutdown from an operator stop. */
+    bool console_termination_requested(void);
 
 #ifdef __cplusplus
 }

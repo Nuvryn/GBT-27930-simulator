@@ -1,6 +1,6 @@
 /** @file sim_main.c @brief Simulator lifecycle; one process and protocol thread per role. */
 #include "config/sim_config.h"
-#include "simulator/sim_engine.h"
+#include "simulator/sim_session.h"
 #include "simulator/sim_build_info.h"
 #include "logging/sim_log.h"
 #include "support/args.h"
@@ -70,6 +70,11 @@ static int sim_main_startup(const sim_config_t *config, const args_t *args)
     }
     return rc;
 }
+static void sim_main_idle(bool charger)
+{
+    sim_log_event("IDLE", "%s", charger ? "Press Enter to start charging" : "Waiting for peer CHM");
+    console_flush();
+}
 /** All resources are initialized once and released in reverse order. */
 static int sim_main_run(const args_t *args)
 {
@@ -96,8 +101,8 @@ static int sim_main_run(const args_t *args)
         console_printf("log initialization failed\n");
         return 1;
     }
-    sim_log_event("START", "role=%s version=%u interface=%s source=%02X peer=%02X speed=%u software_test=%u",
-        config.charger ? "charger" : "bms", config.version, config.can_interface, (unsigned) config.source, (unsigned) config.peer, config.speed, config.software_test ? 1u : 0u);
+    sim_log_event("START", "role=%s version=%u interface=%s source=%02X peer=%02X speed=%u software_test=%u start_mode=%s",
+        config.charger ? "charger" : "bms", config.version, config.can_interface, (unsigned) config.source, (unsigned) config.peer, config.speed, config.software_test ? 1u : 0u, config.manual_start ? "manual" : "auto");
     const char *role = config.charger ? "charger" : "bms";
     const char *automatic_log = config.file_log && config.log_path[0] == '\0' ? log_sink_path() : NULL;
     int rc = sim_main_startup(&config, args);
@@ -151,8 +156,8 @@ static int sim_main_run(const args_t *args)
         }
         sim_log_event("CAPTURE", "started interface=%s path=%s", config.can_interface, can_capture_path());
     }
-    sim_engine_t *engine = sim_engine_create(&config, sim_main_send, NULL);
-    if (engine == NULL)
+    sim_session_t *session = sim_session_create(&config, sim_main_send, NULL);
+    if (session == NULL)
     {
         if (config.candump)
         {
@@ -164,16 +169,58 @@ static int sim_main_run(const args_t *args)
         return 1;
     }
     uint32_t start_ms = osal_get_tick_ms();
-    sim_log_event("READY", "Startup complete");
-    int result = 0;
+    int result = config.manual_start ? 0 : sim_session_start(session, 0u);
+    bool exiting = false, failed = false;
+    if (result == 0)
+    {
+        sim_log_event("READY", "Startup complete");
+        if (config.manual_start)
+        {
+            sim_main_idle(config.charger);
+        }
+    }
     while (result == 0)
     {
         uint32_t now_ms = (uint32_t) (osal_get_tick_ms() - start_ms) * config.speed;
         sim_log_time(now_ms);
         if (s_sim_stop_requested != 0)
         {
-            sim_engine_stop(engine, now_ms);
+            exiting = !sim_session_active(session) || console_termination_requested();
+            sim_session_stop(session, now_ms);
             s_sim_stop_requested = 0;
+        }
+        if (exiting && !sim_session_active(session))
+        {
+            result = failed ? -1 : 1;
+            break;
+        }
+        if (config.manual_start && config.charger && !exiting)
+        {
+            int input = console_input_poll();
+            if (input < 0 || input == 2)
+            {
+                sim_log_event(input < 0 ? "ERROR" : "INPUT", "stdin %s code=%d", input < 0 ? "failed" : "closed", input);
+                if (input < 0)
+                {
+                    result = input;
+                    break;
+                }
+                exiting = true;
+                sim_session_stop(session, now_ms);
+                if (!sim_session_active(session))
+                {
+                    result = failed ? -1 : 1;
+                    break;
+                }
+            }
+            else if (input == 1 && !sim_session_active(session))
+            {
+                result = sim_session_start(session, now_ms);
+                if (result != 0)
+                {
+                    break;
+                }
+            }
         }
         for (unsigned drained = 0u; drained < 128u; drained++)
         {
@@ -189,7 +236,7 @@ static int sim_main_run(const args_t *args)
                 break;
             }
             sim_log_frame("RX", &frame);
-            rc = sim_engine_receive(engine, &frame, now_ms);
+            rc = sim_session_receive(session, &frame, now_ms);
             if (rc != 0)
             {
                 result = rc;
@@ -198,7 +245,24 @@ static int sim_main_run(const args_t *args)
         }
         if (result == 0)
         {
-            result = sim_engine_tick(engine, now_ms);
+            rc = sim_session_tick(session, now_ms);
+            if (rc != 0)
+            {
+                failed = failed || rc < 0;
+                if (!config.manual_start || exiting)
+                {
+                    result = failed ? (rc < 0 ? rc : -1) : 1;
+                }
+                else
+                {
+                    sim_main_idle(config.charger);
+                }
+            }
+        }
+        if (sim_session_io_error(session) != 0)
+        {
+            result = sim_session_io_error(session);
+            sim_log_event("ERROR", "CAN send failed rc=%d", result);
         }
         if (log_sink_error() != 0 || can_bus_drop_count() != 0u)
         {
@@ -226,7 +290,7 @@ static int sim_main_run(const args_t *args)
     }
     sim_log_event("RESULT", "status=%s code=%d", result == 1 ? "PASS" : "FAIL", result);
     console_set_stop_handler(NULL);
-    sim_engine_destroy(engine);
+    sim_session_destroy(session);
     can_bus_close();
     if (sim_main_log_close() != 0)
     {

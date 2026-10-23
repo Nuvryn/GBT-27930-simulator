@@ -50,3 +50,7 @@ Linux `args_parse` 遇到 `--version` 设置 `show_version` 并返回 0，由正
 `log_retention.h` 提供自动会话登记和租约释放：每个角色保留最新 3 次自动记录，捕获文件可追加到同一次登记。只接收已创建的自动路径；显式路径不登记。Linux 使用目录内归属标记、flock 和限定文件名清理；Zephyr 对非空登记返回 ENOSYS，无文件登记为空操作。释放必须晚于所有输出文件关闭，调用仅发生在初始化/退出线程。
 
 `log_sink.h` 管理日志输出线程和文件，隔离 EasyLogger 与平台 I/O。`can_capture.h` 补充框架缺少的外部抓包进程生命周期：Linux 后端启动 candump、保存两路输出并回收子进程；Zephyr 启动返回 ENOSYS。应用通过纯契约启动、检查错误和停止，不直接调用 pthread、spawn、waitpid 或文件 API。抓包是进程内单实例，文件和子进程均由后端持有。
+
+## 非阻塞控制台输入
+
+`console_input_poll()` 单消费者调用：0 无空行，1 Enter，2 EOF，负数为错误。Linux 使用 poll/read 读取规范终端或管道，不切换终端模式；非空行忽略，不提供命令解析。Zephyr 返回 `-ENOSYS`，当前只编译骨架。`console_termination_requested()` 区分 SIGTERM 的进程退出请求和 SIGINT 的会话中止；前者一旦置位持续到退出。以上接口由协议线程调用，信号回调仍仅设置通知标记。

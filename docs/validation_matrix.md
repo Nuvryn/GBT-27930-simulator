@@ -1,5 +1,13 @@
 # 验证清单与交付边界
 
+## Linux 手动重复会话专项（2026-10-23）
+
+新增 `sim_session` 可控时间测试：两种版本各连续三轮、空闲等待超过会话时限仍不发送、不接受错误长度/对端 CHM、重复 start 拒绝、失败后计时重置及旧 CHM 连续流抑制。配置测试覆盖省略模式仍为 auto、manual 禁用自动重连、非法模式拒绝。
+
+新增 `manual_sessions` 使用 WSL vcan 和真实子进程标准输入，验证两种版本各两轮正常充电、空闲期间无发送、Ctrl-C 中止后进程保留、连续失败后重新成功、EOF 和 SIGTERM 退出，并检查一轮 2015 真实时间手动充电。没有 vcan 返回 77。证据在 `build/manual_sessions_*/` 中的配置、应用日志和控制台文件。
+
+本次 Linux CTest 共 17 项，原有自动软件场景仍为 29 个；ARM Linux 交叉编译、Zephyr 骨架和 9 项 ASan/UBSan 离线检查通过。新增能力未在 ARM 板或真实桩/BMS 上验证。
+
 ## Linux 启动信息专项（2026-10-23）
 
 `simulator_cli` 验证 `--version` 在配置不存在时仍退出 0 且不创建文件；自动日志含有效配置和构建信息，控制台不泄漏详情；CAN 初始化失败不得输出启动完成。大配置覆盖命令行覆盖、默认值、全部 22 种报文设置、256 个单体及分组、128 个温度、32 条注入和 32 个事件，JSON 特殊字符及长字段分段仍可完整还原。
@@ -24,11 +32,11 @@ Linux 14 项 CTest（含 29 个双进程场景）、ARM 交叉编译、Zephyr �
 
 | 检查 | 结果 | 证据/复现入口 |
 |---|---|---|
-| Linux 严格告警构建与 15 项 CTest | PASS | `scripts/verify_simulator.sh --prepare-vcan`；`build/Testing/Temporary/LastTest.log` |
+| Linux 严格告警构建与 17 项 CTest | PASS | `scripts/verify_simulator.sh --prepare-vcan`；`build/Testing/Temporary/LastTest.log` |
 | 2015、2023 双角色正常充电及双方主动结束 | PASS | 四个 normal 场景及独立可控时间引擎测试 |
 | 真实时间双角色正常充电 | PASS | `scripts/verify_real_time.sh`；`report_real_time_2015.json` / `report_real_time_2023.json` |
 | DT 最小 10 ms 与 BCL/CCS 50 ms 调度 | PASS | 独立 TP 可控时间检查、真实时间日志间隔；后者允许至 100 ms 用于本机回归 |
-| ASan + UBSan | PASS | `scripts/verify_build_matrix.sh` 的 8 项保留策略/抓包/日志/核心/启停边界/CLI 检查；启动、异常及最大 TP 负载路径 |
+| ASan + UBSan | PASS | `scripts/verify_build_matrix.sh` 的 9 项会话/保留策略/抓包/日志/核心/启停边界/CLI 检查；启动、异常及最大 TP 负载路径 |
 | 固定依赖完整性 | PASS | `scripts/check_dependencies.py`，原始 Open-SAE-J1939 58 文件、cJSON、EasyLogger |
 | ARM Linux 交叉编译 | PASS | `build-armhf/gbt27930_simulator`；ELF32 ARM EABI5，v7，VFP 寄存器传参 |
 | Zephyr 骨架编译 | PASS | `build-zephyr/gbt27930_simulator`；仅桩头文件构建，无真实 SDK/设备运行 |

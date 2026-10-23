@@ -17,6 +17,9 @@
 #include <stdio.h>
 #include <stdlib.h> /* SIG_DFL */
 #include <string.h>
+#include <errno.h>
+#include <poll.h>
+#include <unistd.h>
 
 /* -------------- Console (unified output interface -> stdout) -------------- */
 
@@ -26,7 +29,7 @@ void console_out(const char *data, size_t len)
     {
         return;
     }
-    (void)fwrite(data, 1, len, stdout);
+    (void) fwrite(data, 1, len, stdout);
 }
 
 int console_printf(const char *fmt, ...)
@@ -44,23 +47,28 @@ int console_printf(const char *fmt, ...)
     va_end(ap);
     if (n > 0)
     {
-        console_out(buf, (size_t)(n < (int)sizeof(buf) ? n : (int)sizeof(buf)));
+        console_out(buf, (size_t) (n < (int) sizeof(buf) ? n : (int) sizeof(buf)));
     }
     return n;
 }
 
 void console_flush(void)
 {
-    (void)fflush(stdout);
+    (void) fflush(stdout);
 }
 
 /* -------------- Stop hook (SIGINT/SIGTERM -> callback) -------------- */
 
 static void (*s_stop_fn)(void) = NULL;
+static volatile sig_atomic_t s_termination_requested;
+static bool s_console_line_has_text;
 
 static void console_stop_signal_handler(int sig)
 {
-    (void)sig;
+    if (sig == SIGTERM)
+    {
+        s_termination_requested = 1;
+    }
     if (s_stop_fn)
     {
         s_stop_fn();
@@ -83,4 +91,49 @@ void console_set_stop_handler(void (*fn)(void))
         signal(SIGINT, SIG_DFL);
         signal(SIGTERM, SIG_DFL);
     }
+}
+bool console_termination_requested(void)
+{
+    return s_termination_requested != 0;
+}
+int console_input_poll(void)
+{
+    struct pollfd input = {.fd = STDIN_FILENO, .events = POLLIN};
+    int rc = poll(&input, 1u, 0);
+    if (rc < 0)
+    {
+        return errno == EINTR ? 0 : -errno;
+    }
+    if (rc == 0)
+    {
+        return 0;
+    }
+    if ((input.revents & POLLNVAL) != 0)
+    {
+        return -EBADF;
+    }
+    char bytes[64];
+    ssize_t count = read(STDIN_FILENO, bytes, sizeof(bytes));
+    if (count < 0)
+    {
+        return errno == EINTR || errno == EAGAIN ? 0 : -errno;
+    }
+    if (count == 0)
+    {
+        return 2;
+    }
+    bool enter = false;
+    for (ssize_t idx = 0; idx < count; idx++)
+    {
+        if (bytes[idx] == '\n')
+        {
+            enter = enter || !s_console_line_has_text;
+            s_console_line_has_text = false;
+        }
+        else if (bytes[idx] != '\r')
+        {
+            s_console_line_has_text = true;
+        }
+    }
+    return enter ? 1 : 0;
 }

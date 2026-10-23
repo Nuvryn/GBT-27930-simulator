@@ -400,6 +400,15 @@ static bool sim_config_scalar(const cJSON *item, sim_config_t *config)
     {
         return sim_config_string(item, config->can_interface, sizeof(config->can_interface)) && config->can_interface[0] != '\0';
     }
+    if (strcmp(key, "start_mode") == 0)
+    {
+        if (!cJSON_IsString(item) || (strcmp(item->valuestring, "auto") != 0 && strcmp(item->valuestring, "manual") != 0))
+        {
+            return false;
+        }
+        config->manual_start = strcmp(item->valuestring, "manual") == 0;
+        return true;
+    }
     if (strcmp(key, "log_path") == 0)
     {
         return sim_config_string(item, config->log_path, sizeof(config->log_path));
@@ -600,6 +609,12 @@ int sim_config_parse(const char *text, sim_config_t *out_config, char *out_error
         rc = sim_config_error(out_error, error_capacity, "cross-field constraints");
     }
     cJSON_Delete(root);
+    if (rc == 0 && config.manual_start)
+    {
+        /* A new handshake in manual mode requires a fresh operator/peer trigger. */
+        config.retries = 0u;
+        config.reconnect_allowed = false;
+    }
     if (rc == 0 && config.cell_group_count != 0u && config.cell_group_count != config.values.cell_count)
     {
         rc = sim_config_error(out_error, error_capacity, "cell_group length");

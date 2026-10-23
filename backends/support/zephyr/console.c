@@ -22,10 +22,11 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <errno.h>
 
 /* File-local diagnostic counters for the unimplemented backend. NOT externally
  * observable - the contract-visible behaviour is that bytes are dropped. */
-static uint32_t s_unimpl_out_count   = 0;
+static uint32_t s_unimpl_out_count = 0;
 static uint32_t s_unimpl_flush_count = 0;
 
 /* Stop callback storage (trigger source TODO) */
@@ -37,8 +38,8 @@ void console_out(const char *data, size_t len)
 {
     /* TODO: wire up the target console (UART/USB-CDC) via hal_uart.
      *       Skeleton: bytes are dropped but the drop is counted. */
-    (void)data;
-    (void)len;
+    (void) data;
+    (void) len;
     s_unimpl_out_count++;
 }
 
@@ -79,4 +80,12 @@ void console_set_stop_handler(void (*fn)(void))
      *       the ISR or a main-loop detection point calls s_stop_fn() to trigger
      *       engine cleanup. The skeleton only stores the callback; nobody fires it. */
     s_stop_fn = fn;
+}
+int console_input_poll(void)
+{
+    return -ENOSYS;
+}
+bool console_termination_requested(void)
+{
+    return false;
 }

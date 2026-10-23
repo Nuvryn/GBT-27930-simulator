@@ -41,6 +41,7 @@ typedef struct
 typedef struct
 {
     bool charger;
+    bool manual_start;
     unsigned version;
     char can_interface[16];
     uint8_t source;

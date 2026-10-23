@@ -57,6 +57,7 @@ static void add_fixed_string(sim_config_builder_t *builder, cJSON *root, const c
 static void add_root(sim_config_builder_t *builder, cJSON *root, const sim_config_t *config)
 {
     add_string(builder, root, "role", config->charger ? "charger" : "bms");
+    add_string(builder, root, "start_mode", config->manual_start ? "manual" : "auto");
     add_string(builder, root, "can_interface", config->can_interface);
     add_string(builder, root, "log_path", config->log_path);
     add_string(builder, root, "candump_path", config->candump_path);
