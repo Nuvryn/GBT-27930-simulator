@@ -17,5 +17,7 @@ int sim_engine_tick(sim_engine_t *engine, uint32_t now_ms);
 void sim_engine_stop(sim_engine_t *engine, uint32_t now_ms);
 /** Protocol-thread only; snapshot owns every value and preserves bounded transitions. */
 void sim_engine_status(const sim_engine_t *engine, sim_status_t *status);
+/** Freeze final evidence before the session destroys the engine; no protocol I/O. */
+void sim_engine_finish(sim_engine_t *engine, int result, uint32_t now_ms);
 int sim_engine_manual_fault(sim_engine_t *engine, const sim_fault_rule_t *rule);
 #endif

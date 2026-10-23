@@ -17,6 +17,10 @@ struct sim_ui_view_s
     lv_obj_t *fields[GBT27930_FIELD_CAPACITY];
     lv_obj_t *message, *stage, *direction, *action, *count, *duration, *delay, *byte, *value;
     lv_obj_t *logs, *filter, *pause, *log_state;
+    lv_obj_t *detail_panel, *detail_title, *detail_choice, *detail_text, *detail_close;
+    sim_stage_t detail_stage;
+    uint32_t detail_record;
+    unsigned detail_session;
     bool dirty, paused;
     unsigned apply_request, stop_sequence;
     uint32_t log_cursor, log_start;
@@ -153,6 +157,251 @@ static lv_obj_t *button(lv_obj_t *parent, const char *text, lv_event_cb_t callba
     lv_obj_center(caption);
     lv_obj_add_event_cb(obj, callback, LV_EVENT_CLICKED, view);
     return obj;
+}
+static void append_text(char *destination, size_t capacity, const char *text);
+static const char *ui_reason(const char *reason)
+{
+    static const struct
+    {
+        const char *key;
+        const char *text;
+    } reasons[] = {
+        {"message_timeout", "报文接收超时"}, {"ready_timeout", "准备就绪超时"},
+        {"session_timeout", "会话总时长超限"}, {"runtime_error", "运行错误，详见会话结果代码及日志"},
+        {"tp_error", "TP 传输失败"}, {"peer_error", "收到对端错误报文"},
+        {"battery_parameters_mismatch", "电池参数不匹配"}, {"charger_parameters_mismatch", "充电机参数不匹配"},
+        {"self_test_failed", "模拟自检条件未通过"}, {"precharge_failed", "模拟预充条件未通过"},
+        {"session_start", "会话开始"}, {"restart", "恢复后重试"}, {"operator_stop", "手动请求中止"},
+        {"peer_stop", "对端请求中止"}, {"handshake_complete", "握手完成"}, {"crm_initial", "收到初始辨识报文"},
+        {"identified", "辨识完成"}, {"battery_parameters_accepted", "电池参数已接受"},
+        {"charger_parameters_accepted", "充电机参数已接受"}, {"bro_received", "收到 BMS 就绪报文"},
+        {"bcl_bcs_received", "需求和状态报文已收到"}, {"soc_target", "达到配置的荷电目标"},
+        {"both_ready", "双方已就绪"}, {"stop_acknowledged", "中止交互完成"},
+        {"statistics_complete", "统计完成"}, {"retries_exhausted", "恢复结束或重试条件不满足"},
+        {"session_failed", "会话失败结束"}, {"session_complete", "会话正常结束"}};
+    for (size_t idx = 0u; idx < sizeof(reasons) / sizeof(reasons[0]); idx++)
+    {
+        if (strcmp(reason, reasons[idx].key) == 0)
+        {
+            return reasons[idx].text;
+        }
+    }
+    return reason[0] != '\0' ? reason : "未记录";
+}
+static const char *ui_message(gbt27930_message_t message)
+{
+    const gbt27930_descriptor_t *descriptor = gbt27930_descriptor(message);
+    return descriptor != NULL ? descriptor->name : "未记录";
+}
+static void detail_refresh(sim_ui_view_t *view)
+{
+    if (view->detail_panel == NULL || lv_obj_is_hidden(view->detail_panel))
+    {
+        return;
+    }
+    const sim_status_t *status = &view->data.status;
+    if (status->session_id != view->detail_session)
+    {
+        lv_dropdown_close(view->detail_choice);
+        lv_obj_set_hidden(view->detail_panel, true);
+        lv_obj_set_clickable(lv_layer_top(), false);
+        return;
+    }
+    char text[4096], options[4096] = "";
+    (void) snprintf(text, sizeof(text), "会话 %u / %s阶段详情", status->session_id, ui_stage_name(view->detail_stage));
+    lv_label_set_text(view->detail_title, text);
+    uint32_t first = status->history_count > SIM_STAGE_HISTORY ? status->history_count - SIM_STAGE_HISTORY : 0u;
+    unsigned selected = 0u, count = 0u;
+    const sim_transition_t *record = NULL, *latest = NULL;
+    uint32_t latest_index = 0u;
+    for (uint32_t idx = first; idx < status->history_count; idx++)
+    {
+        const sim_transition_t *entry = &status->history[idx % SIM_STAGE_HISTORY];
+        if (entry->stage != view->detail_stage)
+        {
+            continue;
+        }
+        (void) snprintf(text, sizeof(text), "%s记录 #%u | %u ms | %s", count != 0u ? "\n" : "", idx + 1u, entry->entered_ms,
+            entry->failed ? "异常" : (entry->closed ? "已结束" : "进行中"));
+        append_text(options, sizeof(options), text);
+        if (idx == view->detail_record)
+        {
+            selected = count;
+            record = entry;
+        }
+        latest = entry;
+        latest_index = idx;
+        count++;
+    }
+    if (view->detail_record == UINT32_MAX && latest != NULL)
+    {
+        view->detail_record = latest_index;
+        record = latest;
+        selected = count - 1u;
+    }
+    if (strcmp(lv_dropdown_get_options(view->detail_choice), options) != 0)
+    {
+        lv_dropdown_set_options(view->detail_choice, options);
+    }
+    lv_dropdown_set_selected(view->detail_choice, selected);
+    lv_obj_set_hidden(view->detail_choice, count == 0u);
+    if (record == NULL)
+    {
+        lv_label_set_text(view->detail_text, view->detail_record == UINT32_MAX ? (status->history_count <= SIM_STAGE_HISTORY ? "本轮尚未进入此阶段。" : "保留历史中无此阶段记录；较早记录已淘汰，无法判断此前是否进入。") : "该条阶段记录已被淘汰，无法还原详情。可选择其他保留记录。旧记录缺失不代表此阶段从未进入。");
+        return;
+    }
+    uint32_t end = record->closed ? record->exited_ms : status->elapsed_ms;
+    (void) snprintf(text, sizeof(text), "进入：%u ms（相对本轮开始）\n进入原因：%s (%s)\n停留：%u ms\n", record->entered_ms,
+        ui_reason(record->reason), record->reason, end - record->entered_ms);
+    char part[768];
+    if (record->closed)
+    {
+        (void) snprintf(part, sizeof(part), "退出：%u ms\n退出原因：%s (%s)\n", record->exited_ms, ui_reason(record->exit_reason), record->exit_reason);
+    }
+    else
+    {
+        (void) snprintf(part, sizeof(part), "退出：尚未退出\n");
+    }
+    append_text(text, sizeof(text), part);
+    if (record->has_last_rx)
+    {
+        (void) snprintf(part, sizeof(part), "本阶段最后有效接收：%s / %u ms\n", ui_message(record->last_rx_message), record->last_rx_ms);
+        append_text(text, sizeof(text), part);
+    }
+    else
+    {
+        append_text(text, sizeof(text), "本阶段最后有效接收：未记录\n");
+    }
+    if (record->failed)
+    {
+        (void) snprintf(part, sizeof(part), "失败：%s (%s)\n失败时间：%u ms | 相关报文：%s\n", ui_reason(record->error), record->error,
+            record->failed_ms, ui_message(record->error_message));
+        append_text(text, sizeof(text), part);
+        if (record->error_message < GBT27930_MESSAGE_COUNT)
+        {
+            if (record->has_error_rx)
+            {
+                (void) snprintf(part, sizeof(part), "相关报文最后有效接收：%u ms（失败时的接收依据）\n", record->error_rx_ms);
+                append_text(text, sizeof(text), part);
+            }
+            else
+            {
+                append_text(text, sizeof(text), "相关报文最后有效接收：本次尝试未收到\n");
+            }
+        }
+        if (record->timeout_kind != SIM_TIMEOUT_NONE)
+        {
+            const char *kinds[] = {"未记录", "首次等待", "持续接收", "阶段等待", "会话总时长"};
+            (void) snprintf(part, sizeof(part), "超时判据：%s\n计时起点：%u ms | 阈值：%u ms | 实际等待：%u ms\n",
+                kinds[record->timeout_kind], record->timeout_origin_ms, record->timeout_limit_ms, record->timeout_wait_ms);
+            append_text(text, sizeof(text), part);
+        }
+        else
+        {
+            append_text(text, sizeof(text), "超时判据：未记录（非超时或证据不足）\n");
+        }
+    }
+    else
+    {
+        append_text(text, sizeof(text), "失败：本条记录未记录失败\n");
+    }
+    (void) snprintf(part, sizeof(part), "本阶段本端注入：手动 %u 次，配置 %u 次\n", record->manual_hits, record->config_hits);
+    append_text(text, sizeof(text), part);
+    if (record->manual_hits != 0u || record->config_hits != 0u)
+    {
+        const sim_fault_evidence_t *hit = &record->last_fault;
+        const char *actions[] = {"丢弃", "延迟", "重复", "修改字节", "修改长度", "修改 CAN 标识符"};
+        (void) snprintf(part, sizeof(part), "最近命中：%u ms | %s规则 %u | %s | %s | %s\n", hit->at_ms,
+            hit->manual ? "手动" : "配置", hit->rule, hit->message, hit->receive ? "接收" : "发送", actions[hit->action]);
+        append_text(text, sizeof(text), part);
+        if (hit->action == SIM_FAULT_DELAY)
+        {
+            (void) snprintf(part, sizeof(part), "延迟参数：%u ms\n", hit->delay_ms);
+            append_text(text, sizeof(text), part);
+        }
+        else if (hit->action == SIM_FAULT_CORRUPT)
+        {
+            if (hit->byte < hit->length)
+            {
+                (void) snprintf(part, sizeof(part), "字节偏移：%u | 原值：%u | 替换值：%u | 原长度：%u\n", (unsigned) hit->byte, (unsigned) hit->before, hit->value, (unsigned) hit->length);
+            }
+            else
+            {
+                (void) snprintf(part, sizeof(part), "字节偏移：%u | 原长度：%u | 偏移越界，原值未记录\n", (unsigned) hit->byte, (unsigned) hit->length);
+            }
+            append_text(text, sizeof(text), part);
+        }
+        else if (hit->action == SIM_FAULT_LENGTH || hit->action == SIM_FAULT_ID)
+        {
+            (void) snprintf(part, sizeof(part), "替换值：%u | 原长度：%u\n", hit->value, (unsigned) hit->length);
+            append_text(text, sizeof(text), part);
+        }
+        append_text(text, sizeof(text), "仅展示最近一次命中详情，其余见日志；命中不等同于失败原因。\n");
+    }
+    append_text(text, sizeof(text), "对端注入及未发送原因：本端无法直接观测。\n");
+    if (status->history_count > SIM_STAGE_HISTORY)
+    {
+        append_text(text, sizeof(text), "较早的阶段记录已淘汰。\n");
+    }
+    lv_label_set_text(view->detail_text, text);
+}
+static void detail_closed(lv_event_t *event)
+{
+    sim_ui_view_t *view = lv_event_get_user_data(event);
+    lv_dropdown_close(view->detail_choice);
+    lv_obj_set_hidden(view->detail_panel, true);
+    lv_obj_set_clickable(lv_layer_top(), false);
+}
+static void detail_selected(lv_event_t *event)
+{
+    sim_ui_view_t *view = lv_event_get_user_data(event);
+    unsigned selected = lv_dropdown_get_selected(view->detail_choice);
+    const sim_status_t *status = &view->data.status;
+    uint32_t first = status->history_count > SIM_STAGE_HISTORY ? status->history_count - SIM_STAGE_HISTORY : 0u;
+    for (uint32_t idx = first; idx < status->history_count; idx++)
+    {
+        if (status->history[idx % SIM_STAGE_HISTORY].stage == view->detail_stage)
+        {
+            if (selected == 0u)
+            {
+                view->detail_record = idx;
+                break;
+            }
+            selected--;
+        }
+    }
+    detail_refresh(view);
+}
+static void stage_clicked(lv_event_t *event)
+{
+    sim_ui_view_t *view = lv_event_get_user_data(event);
+    lv_obj_t *node = lv_event_get_current_target(event);
+    for (unsigned idx = 0u; idx < SIM_STAGE_IDLE; idx++)
+    {
+        if (node == view->nodes[idx])
+        {
+            view->detail_stage = (sim_stage_t) idx;
+            break;
+        }
+    }
+    const sim_status_t *status = &view->data.status;
+    view->detail_session = status->session_id;
+    view->detail_record = UINT32_MAX;
+    uint32_t first = status->history_count > SIM_STAGE_HISTORY ? status->history_count - SIM_STAGE_HISTORY : 0u;
+    bool failed = false;
+    for (uint32_t idx = first; idx < status->history_count; idx++)
+    {
+        const sim_transition_t *entry = &status->history[idx % SIM_STAGE_HISTORY];
+        if (entry->stage == view->detail_stage && (entry->failed || !failed))
+        {
+            view->detail_record = idx;
+            failed = entry->failed;
+        }
+    }
+    lv_obj_set_clickable(lv_layer_top(), true);
+    lv_obj_set_hidden(view->detail_panel, false);
+    detail_refresh(view);
+    lv_obj_scroll_to_y(lv_obj_get_parent(view->detail_text), 0, LV_ANIM_OFF);
 }
 static void disabled(lv_obj_t *obj, bool disable)
 {
@@ -408,8 +657,11 @@ sim_ui_view_t *sim_ui_view_create(sim_control_t *control, const char *config_pat
         lv_obj_set_height(view->nodes[idx], 64);
         lv_obj_set_style_pad_all(view->nodes[idx], 7, 0);
         lv_obj_set_flex_grow(view->nodes[idx], 1);
+        lv_obj_set_clickable(view->nodes[idx], true);
+        lv_obj_add_event_cb(view->nodes[idx], stage_clicked, LV_EVENT_CLICKED, view);
         view->node_text[idx] = label(view->nodes[idx], ui_stage_name((sim_stage_t) idx));
     }
+    label(home, "点击阶段查看详情，异常阶段优先显示失败记录。");
     view->path = label(home, "实际路径：待机");
     view->wait = label(home, "等待开始充电");
     view->measurements = label(home, "对端数据：暂无有效值");
@@ -482,6 +734,24 @@ sim_ui_view_t *sim_ui_view_create(sim_control_t *control, const char *config_pat
     lv_obj_add_event_cb(view->keyboard, keyboard_done, LV_EVENT_READY, view);
     lv_obj_add_event_cb(view->keyboard, keyboard_done, LV_EVENT_CANCEL, view);
     lv_obj_set_hidden(view->keyboard, true);
+    view->detail_panel = lv_obj_create(lv_layer_top());
+    lv_obj_set_size(view->detail_panel, LV_PCT(96), LV_PCT(94));
+    lv_obj_center(view->detail_panel);
+    lv_obj_set_flex_flow(view->detail_panel, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_scrollable(view->detail_panel, false);
+    lv_obj_set_style_pad_all(view->detail_panel, 8, 0);
+    lv_obj_set_style_pad_row(view->detail_panel, 4, 0);
+    view->detail_close = button(view->detail_panel, "关闭详情", detail_closed, view);
+    view->detail_title = label(view->detail_panel, "阶段详情");
+    view->detail_choice = dropdown(view->detail_panel, "本轮进入记录（可选择每次重试）", "");
+    lv_obj_add_event_cb(view->detail_choice, detail_selected, LV_EVENT_VALUE_CHANGED, view);
+    lv_obj_t *detail_body = lv_obj_create(view->detail_panel);
+    lv_obj_set_width(detail_body, LV_PCT(100));
+    lv_obj_set_flex_grow(detail_body, 1);
+    lv_obj_set_style_min_height(detail_body, 40, 0);
+    lv_obj_set_style_pad_all(detail_body, 4, 0);
+    view->detail_text = label(detail_body, "");
+    lv_obj_set_hidden(view->detail_panel, true);
     lv_screen_load(view->root);
     sim_ui_view_refresh(view);
     return view;
@@ -528,7 +798,8 @@ void sim_ui_view_refresh(sim_ui_view_t *view)
     (void) snprintf(text, sizeof(text), "手动注入：%s | 已命中 %u 次 | 请求 %u 结果 %d", status->fault_enabled ? (status->active ? "生效中" : "已预置到下一轮") : "关闭", status->fault_hits, view->data.request_id, view->data.request_result);
     lv_label_set_text(view->banner, text);
     lv_obj_set_style_text_color(view->banner, lv_color_hex(status->fault_enabled ? 0xFFBC52 : 0x8BDAC2), 0);
-    bool visited[SIM_STAGE_IDLE] = {false};
+    detail_refresh(view);
+    bool visited[SIM_STAGE_IDLE] = {false}, failed_stage[SIM_STAGE_IDLE] = {false};
     unsigned retained = status->history_count < SIM_STAGE_HISTORY ? status->history_count : SIM_STAGE_HISTORY;
     for (unsigned idx = 0u; idx < retained; idx++)
     {
@@ -536,12 +807,13 @@ void sim_ui_view_refresh(sim_ui_view_t *view)
         if ((unsigned) step->stage < SIM_STAGE_IDLE)
         {
             visited[step->stage] = true;
+            failed_stage[step->stage] = failed_stage[step->stage] || step->failed;
         }
     }
     for (unsigned idx = 0u; idx < SIM_STAGE_IDLE; idx++)
     {
         bool current = status->active && (unsigned) status->stage == idx;
-        bool error = status->failed && (unsigned) status->error_stage == idx;
+        bool error = failed_stage[idx];
         const char *state = error ? "异常" : (current ? "当前" : (visited[idx] ? "已进入" : "未进入"));
         (void) snprintf(text, sizeof(text), "%s\n%s", ui_stage_name((sim_stage_t) idx), state);
         lv_label_set_text(view->node_text[idx], text);
@@ -673,12 +945,42 @@ void sim_ui_view_destroy(sim_ui_view_t *view)
 {
     if (view != NULL)
     {
+        if (!lv_obj_is_hidden(view->detail_panel))
+        {
+            lv_obj_set_clickable(lv_layer_top(), false);
+        }
+        lv_obj_delete(view->detail_panel);
         lv_obj_delete(view->root);
         osal_free(view);
     }
 }
 lv_obj_t *sim_ui_view_widget(sim_ui_view_t *view, const char *name)
 {
+    if (strcmp(name, "stage_detail") == 0)
+    {
+        return view->detail_text;
+    }
+    if (strcmp(name, "stage_records") == 0)
+    {
+        return view->detail_choice;
+    }
+    if (strcmp(name, "stage_close") == 0)
+    {
+        return view->detail_close;
+    }
+    if (strcmp(name, "stage_panel") == 0)
+    {
+        return view->detail_panel;
+    }
+    for (unsigned idx = 0u; idx < SIM_STAGE_IDLE; idx++)
+    {
+        char node[40];
+        (void) snprintf(node, sizeof(node), "stage_%s", sim_stage_name((sim_stage_t) idx));
+        if (strcmp(name, node) == 0)
+        {
+            return view->nodes[idx];
+        }
+    }
     if (strcmp(name, "tabs") == 0)
     {
         return view->tabs;

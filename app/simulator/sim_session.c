@@ -141,6 +141,7 @@ int sim_session_tick(sim_session_t *session, uint32_t now_ms)
     if (result != 0)
     {
         sim_log_event("SESSION_RESULT", "id=%u status=%s code=%d", session->count, result == 1 ? "PASS" : "FAIL", result);
+        sim_engine_finish(session->engine, result, now_ms - session->start_ms);
         sim_engine_status(session->engine, &session->status);
         session->status.active = false;
         session->status.fault_enabled = false;

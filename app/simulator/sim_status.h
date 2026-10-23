@@ -2,6 +2,7 @@
 #ifndef SIM_STATUS_H
 #define SIM_STATUS_H
 #include "config/sim_config.h"
+#include "fault_injection/sim_fault.h"
 #define SIM_STAGE_HISTORY 64u
 typedef enum
 {
@@ -16,11 +17,28 @@ typedef enum
     SIM_STAGE_DONE,
     SIM_STAGE_IDLE
 } sim_stage_t;
+
+typedef enum
+{
+    SIM_TIMEOUT_NONE,
+    SIM_TIMEOUT_FIRST,
+    SIM_TIMEOUT_CONTINUOUS,
+    SIM_TIMEOUT_STAGE,
+    SIM_TIMEOUT_SESSION
+} sim_timeout_kind_t;
 typedef struct
 {
     sim_stage_t stage;
     uint32_t entered_ms;
     char reason[64];
+    bool closed, failed, has_last_rx, has_error_rx;
+    uint32_t exited_ms, failed_ms, last_rx_ms, error_rx_ms;
+    gbt27930_message_t last_rx_message, error_message;
+    char exit_reason[64], error[64];
+    sim_timeout_kind_t timeout_kind;
+    uint32_t timeout_origin_ms, timeout_limit_ms, timeout_wait_ms;
+    uint32_t manual_hits, config_hits;
+    sim_fault_evidence_t last_fault;
 } sim_transition_t;
 typedef struct
 {

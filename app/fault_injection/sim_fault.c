@@ -23,6 +23,8 @@ struct sim_fault_s
     const sim_config_t *config;
     sim_fault_dispatch_cb_t dispatch_cb;
     void *cb_user;
+    sim_fault_observer_t observer;
+    void *observer_user;
     uint32_t hits[SIM_CONFIG_RULE_CAPACITY];
     sim_fault_pending_t queue[SIM_FAULT_QUEUE_CAPACITY];
 };
@@ -104,6 +106,12 @@ int sim_fault_apply(sim_fault_t *fault, bool receive, const char *message, const
         }
         (*hits)++;
         fault->dispatch_manual = manual;
+        if (fault->observer != NULL)
+        {
+            sim_fault_evidence_t evidence = {.manual = manual, .receive = receive, .rule = manual ? 0u : (unsigned) (idx - 1u), .action = rule->action, .at_ms = now_ms, .delay_ms = rule->delay_ms, .value = rule->value, .byte = rule->byte, .before = rule->byte < len ? changed[rule->byte] : 0u, .length = len};
+            memcpy(evidence.message, message, strlen(message) + 1u);
+            fault->observer(fault->observer_user, &evidence);
+        }
         sim_log_event("FAULT", "source=%s rule=%u message=%s direction=%s action=%u hit=%u before_len=%u byte=%u before=%u after=%u", manual ? "manual" : "config", manual ? 0u : (unsigned) (idx - 1u), message, receive ? "rx" : "tx",
             (unsigned) rule->action, (unsigned) *hits, (unsigned) len, (unsigned) rule->byte, rule->byte < len ? (unsigned) changed[rule->byte] : 0u, (unsigned) rule->value);
         switch (rule->action)
@@ -196,4 +204,12 @@ void sim_fault_manual_status(const sim_fault_t *fault, bool *enabled, uint32_t *
     *hits = fault->manual_hits;
     *enabled = fault->manual_enabled && (fault->manual.count == 0u || fault->manual_hits < fault->manual.count) &&
                (fault->manual.duration_ms == 0u || fault->now_ms - fault->manual_start_ms < fault->manual.after_ms + fault->manual.duration_ms);
+}
+void sim_fault_observe(sim_fault_t *fault, sim_fault_observer_t observer, void *user)
+{
+    if (fault != NULL)
+    {
+        fault->observer = observer;
+        fault->observer_user = user;
+    }
 }

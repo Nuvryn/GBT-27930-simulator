@@ -97,6 +97,11 @@ static int timeout_restart(void)
     sim_frame_t chm = {.id = 0x1826F456u, .len = 3u, .data = {1u, 1u, 0u}};
     CHECK(sim_session_receive(session, &chm, 10000u) == 0 && sim_session_active(session));
     CHECK(sim_session_tick(session, 10100u) < 0 && !sim_session_active(session));
+    sim_status_t status;
+    sim_session_status(session, &status);
+    CHECK(status.history[0].failed && status.history[0].closed);
+    CHECK(status.history[0].timeout_kind == SIM_TIMEOUT_SESSION && status.history[0].timeout_limit_ms == 100u);
+    CHECK(status.history[0].timeout_wait_ms == 100u && status.history[0].exited_ms == 100u);
     CHECK(sim_session_receive(session, &chm, 10101u) == 0 && !sim_session_active(session));
     CHECK(sim_session_receive(session, &chm, 11100u) == 0 && !sim_session_active(session));
     CHECK(sim_session_receive(session, &chm, 12100u) == 0 && sim_session_active(session));

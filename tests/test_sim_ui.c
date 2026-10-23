@@ -50,6 +50,32 @@ static void click(sim_ui_view_t *view, const char *widget)
     CHECK(!lv_obj_has_state(obj, LV_STATE_DISABLED));
     CHECK(lv_obj_send_event(obj, LV_EVENT_CLICKED, NULL) == LV_RESULT_OK);
 }
+static void touch_click(sim_ui_view_t *view, const char *widget)
+{
+    lv_obj_t *obj = sim_ui_view_widget(view, widget);
+    CHECK(obj != NULL);
+    lv_obj_scroll_to_view_recursive(obj, LV_ANIM_OFF);
+    lv_obj_update_layout(lv_screen_active());
+    lv_area_t area;
+    lv_obj_get_coords(obj, &area);
+    touch.point.x = (area.x1 + area.x2) / 2;
+    touch.point.y = (area.y1 + area.y2) / 2;
+    CHECK(touch.point.x >= 0 && touch.point.x < (int32_t) width && touch.point.y >= 0 && touch.point.y < (int32_t) height);
+    lv_obj_t *hit = lv_indev_search_obj(lv_layer_top(), &touch.point);
+    if (hit == NULL)
+    {
+        hit = lv_indev_search_obj(lv_screen_active(), &touch.point);
+    }
+    CHECK(hit == obj);
+    lv_indev_t *indev = lv_indev_create();
+    lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_read_cb(indev, read_touch);
+    touch.state = LV_INDEV_STATE_PRESSED;
+    lv_indev_read(indev);
+    touch.state = LV_INDEV_STATE_RELEASED;
+    lv_indev_read(indev);
+    lv_indev_delete(indev);
+}
 static void screenshot(const char *directory, const char *name)
 {
     char path[512];
@@ -221,6 +247,17 @@ static void run_pair(unsigned version, bool gui_charger, const char *directory)
         CHECK(sim_control_read(control, &data) == 0 && !data.status.active && data.status.stage == SIM_STAGE_IDLE && data.status.result == 1);
         CHECK(data.status.history_count >= 7u && !data.status.fault_enabled);
         CHECK(strstr(lv_label_get_text(sim_ui_view_widget(view, "summary")), "待机") != NULL);
+        for (unsigned record = 0u; record < data.status.history_count; record++)
+        {
+            const sim_transition_t *entry = &data.status.history[record % SIM_STAGE_HISTORY];
+            CHECK(entry->closed && entry->exited_ms >= entry->entered_ms && !entry->failed);
+        }
+        click(view, "stage_handshake");
+        CHECK(!lv_obj_is_hidden(sim_ui_view_widget(view, "stage_panel")));
+        CHECK(strstr(lv_label_get_text(sim_ui_view_widget(view, "stage_detail")), "握手完成") != NULL || !gui_charger);
+        CHECK(strstr(lv_label_get_text(sim_ui_view_widget(view, "stage_detail")), "退出：") != NULL);
+        click(view, "stage_close");
+        CHECK(lv_obj_is_hidden(sim_ui_view_widget(view, "stage_panel")));
         now += 10000u;
     }
     sim_log_observe(NULL, NULL);
@@ -229,7 +266,7 @@ static void run_pair(unsigned version, bool gui_charger, const char *directory)
     sim_session_destroy(left);
     sim_session_destroy(right);
 }
-static void failed_flow(void)
+static void failed_flow(const char *directory)
 {
     sim_config_t config;
     sim_config_defaults(&config);
@@ -238,17 +275,26 @@ static void failed_flow(void)
     config.aux_power_off_delay_ms = 10u;
     config.first_timeout_ms[GBT27930_BHM] = 100u;
     config.max_session_ms = 1000u;
+    config.fault_count = 1u;
+    config.faults[0] = (sim_fault_rule_t){.message = "CHM", .stage = "*", .action = SIM_FAULT_DROP, .count = 1u};
     sim_session_t *session = sim_session_create(&config, send_frame, NULL);
     sim_control_t *control = sim_control_create(&config, NULL);
     CHECK(session != NULL && control != NULL);
     sim_ui_view_t *view = sim_ui_view_create(control, NULL);
     CHECK(view != NULL);
     head = tail = 0u;
+    sim_fault_rule_t dropped = {.message = "BHM", .stage = "*", .receive = true, .action = SIM_FAULT_DROP, .count = 1u, .delay_ms = 100u};
+    CHECK(sim_session_manual_fault(session, &dropped) == 0);
     click(view, "start");
     CHECK(sim_control_step(control, session, 100000u) == 0);
     int rc = 0;
     for (uint32_t now = 100000u; now < 101000u && rc == 0; now++)
     {
+        if (now == 100050u || now == 100075u)
+        {
+            sim_frame_t bhm = {.id = gbt27930_can_id(GBT27930_BHM, config.peer, config.source), .len = now == 100050u ? 2u : 1u, .data = {0x4Cu, 0x1Du}};
+            CHECK(sim_session_receive(session, &bhm, now) == 0);
+        }
         rc = sim_session_tick(session, now);
         CHECK(sim_control_publish(control, session) == 0);
     }
@@ -258,6 +304,41 @@ static void failed_flow(void)
     CHECK(sim_control_read(control, &data) == 0 && data.status.failed && !data.status.active);
     CHECK(data.status.error_stage == SIM_STAGE_HANDSHAKE && data.status.error_message == GBT27930_BHM);
     CHECK(strstr(lv_label_get_text(sim_ui_view_widget(view, "waiting")), "message_timeout") != NULL);
+    const sim_transition_t *failed = &data.status.history[0];
+    CHECK(failed->failed && failed->closed && failed->entered_ms == 0u && failed->exited_ms == 100u);
+    CHECK(failed->timeout_kind == SIM_TIMEOUT_FIRST && failed->timeout_limit_ms == 100u && failed->timeout_wait_ms == 100u);
+    CHECK(!failed->has_error_rx && !failed->has_last_rx && failed->manual_hits == 1u && failed->config_hits == 1u);
+    CHECK(failed->last_fault.receive && failed->last_fault.at_ms == 50u && strcmp(failed->last_fault.message, "BHM") == 0);
+    touch_click(view, "stage_handshake");
+    CHECK(!lv_obj_is_hidden(sim_ui_view_widget(view, "stage_panel")));
+    lv_point_t edge = {0, 0};
+    CHECK(lv_indev_search_obj(lv_layer_top(), &edge) == lv_layer_top());
+    const char *detail = lv_label_get_text(sim_ui_view_widget(view, "stage_detail"));
+    CHECK(strstr(detail, "报文接收超时") != NULL && strstr(detail, "阈值：100 ms") != NULL);
+    CHECK(strstr(detail, "本次尝试未收到") != NULL && strstr(detail, "手动 1 次，配置 1 次") != NULL);
+    CHECK(strstr(detail, "BHM") != NULL && strstr(detail, "命中不等同于失败原因") != NULL);
+    lv_obj_update_layout(lv_layer_top());
+    lv_area_t bounds;
+    lv_obj_get_coords(sim_ui_view_widget(view, "stage_panel"), &bounds);
+    CHECK(bounds.x1 >= 0 && bounds.y1 >= 0 && bounds.x2 < (int32_t) width && bounds.y2 < (int32_t) height);
+    lv_refr_now(NULL);
+    char name[64];
+    (void) snprintf(name, sizeof(name), "ui_stage_failure_%u", width);
+    screenshot(directory, name);
+    /* Pending idle time must not change a frozen record's duration. */
+    CHECK(sim_session_tick(session, 101999u) == 0);
+    CHECK(sim_control_publish(control, session) == 0);
+    sim_ui_view_refresh(view);
+    CHECK(strstr(lv_label_get_text(sim_ui_view_widget(view, "stage_detail")), "停留：100 ms") != NULL);
+    lv_dropdown_open(sim_ui_view_widget(view, "stage_records"));
+    touch_click(view, "stage_close");
+    CHECK(!lv_dropdown_is_open(sim_ui_view_widget(view, "stage_records")));
+    CHECK(!lv_obj_is_clickable(lv_layer_top()));
+    click(view, "stage_charging");
+    CHECK(strstr(lv_label_get_text(sim_ui_view_widget(view, "stage_detail")), "尚未进入") != NULL);
+    click(view, "stage_close");
+    click(view, "stage_handshake");
+    lv_dropdown_open(sim_ui_view_widget(view, "stage_records"));
     /* Arm a CHM drop before the next start: it must affect the first frame. */
     click(view, "enable");
     CHECK(sim_control_step(control, session, 102000u) == 0);
@@ -271,9 +352,60 @@ static void failed_flow(void)
     CHECK(sim_control_publish(control, session) == 0);
     sim_ui_view_refresh(view);
     CHECK(tail == before);
+    CHECK(lv_obj_is_hidden(sim_ui_view_widget(view, "stage_panel")));
+    CHECK(!lv_dropdown_is_open(sim_ui_view_widget(view, "stage_records")));
     CHECK(sim_control_read(control, &data) == 0 && data.status.fault_hits == 1u && !data.status.failed && data.status.session_id == 2u);
     sim_control_work(control);
     sim_control_work(control);
+    sim_ui_view_destroy(view);
+    sim_control_destroy(control);
+    sim_session_destroy(session);
+}
+static void repeated_details(void)
+{
+    sim_config_t config;
+    sim_config_defaults(&config);
+    config.retries = 40u;
+    config.reconnect_allowed = true;
+    config.first_timeout_ms[GBT27930_BHM] = 10u;
+    config.recovery_wait_ms = 1u;
+    config.max_session_ms = 2000u;
+    sim_session_t *session = sim_session_create(&config, send_frame, NULL);
+    sim_control_t *control = sim_control_create(&config, NULL);
+    CHECK(session != NULL && control != NULL && sim_session_start(session, 100000u) == 0);
+    CHECK(sim_control_publish(control, session) == 0);
+    sim_ui_view_t *view = sim_ui_view_create(control, NULL);
+    CHECK(view != NULL);
+    CHECK(sim_session_tick(session, 100010u) == 0);
+    CHECK(sim_control_publish(control, session) == 0);
+    sim_ui_view_refresh(view);
+    click(view, "stage_handshake");
+    CHECK(strstr(lv_label_get_text(sim_ui_view_widget(view, "stage_detail")), "进入：0 ms") != NULL);
+    for (uint32_t now = 100011u; now <= 100400u; now++)
+    {
+        CHECK(sim_session_tick(session, now) == 0);
+        CHECK(sim_control_publish(control, session) == 0);
+        sim_ui_view_refresh(view);
+    }
+    sim_control_view_t data;
+    CHECK(sim_control_read(control, &data) == 0 && data.status.history_count > SIM_STAGE_HISTORY);
+    CHECK(strstr(lv_label_get_text(sim_ui_view_widget(view, "stage_detail")), "已被淘汰") != NULL);
+    lv_obj_t *choices = sim_ui_view_widget(view, "stage_records");
+    CHECK(lv_dropdown_get_option_count(choices) > 2u);
+    lv_dropdown_set_selected(choices, 1u);
+    CHECK(lv_obj_send_event(choices, LV_EVENT_VALUE_CHANGED, NULL) == LV_RESULT_OK);
+    const char *detail = lv_label_get_text(sim_ui_view_widget(view, "stage_detail"));
+    CHECK(strstr(detail, "阈值：10 ms") != NULL && strstr(detail, "已被淘汰") == NULL);
+    uint32_t first = data.status.history_count - SIM_STAGE_HISTORY;
+    for (uint32_t idx = first; idx < data.status.history_count; idx++)
+    {
+        const sim_transition_t *entry = &data.status.history[idx % SIM_STAGE_HISTORY];
+        if (entry->stage == SIM_STAGE_HANDSHAKE && entry->closed)
+        {
+            CHECK(entry->failed && entry->timeout_origin_ms == entry->entered_ms);
+            CHECK(entry->timeout_wait_ms == 10u && !entry->has_error_rx);
+        }
+    }
     sim_ui_view_destroy(view);
     sim_control_destroy(control);
     sim_session_destroy(session);
@@ -316,12 +448,14 @@ int main(int argc, char **argv)
     run_pair(2023u, true, argv[1]);
     run_pair(2015u, false, argv[1]);
     run_pair(2023u, false, argv[1]);
+    failed_flow(argv[1]);
     /* The same UI uses the display's reported dimensions, without a config resolution override. */
     width = 480u;
     height = 272u;
     lv_display_set_resolution(display, (int32_t) width, (int32_t) height);
     run_pair(2015u, true, argv[1]);
-    failed_flow();
+    failed_flow(argv[1]);
+    repeated_details();
     lv_deinit();
     free(buffer);
     free(pixels);

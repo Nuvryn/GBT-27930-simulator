@@ -451,9 +451,44 @@ static int test_cem_until_crm(void)
     fixture_dispose();
     return 0;
 }
+static int test_timeout_evidence(void)
+{
+    CHECK(fixture_start(2015u, false, true, false) == 0);
+    fixture_dispose();
+    s_fixture.config.timeout_ms[GBT27930_CRO] = 40u;
+    CHECK(fixture_recreate() == 0);
+    CHECK(fixture_bms_ready() == 0 && fixture_advance(300u) == 0);
+    const uint8_t not_ready[] = {0u};
+    CHECK(fixture_feed(GBT27930_CRO, not_ready, sizeof(not_ready)) == 0);
+    uint32_t received = s_fixture.now_ms;
+    CHECK(fixture_advance(39u) == 0);
+    sim_status_t status;
+    sim_engine_status(s_fixture.engine, &status);
+    CHECK(status.stage == SIM_STAGE_READY && !status.failed);
+    CHECK(fixture_advance(1u) == 0);
+    sim_engine_status(s_fixture.engine, &status);
+    CHECK(status.stage == SIM_STAGE_RECOVERY && status.failed);
+    bool found = false;
+    for (unsigned idx = 0u; idx < status.history_count; idx++)
+    {
+        const sim_transition_t *entry = &status.history[idx % SIM_STAGE_HISTORY];
+        if (entry->stage == SIM_STAGE_READY)
+        {
+            found = true;
+            CHECK(entry->closed && entry->failed && entry->exited_ms == received + 40u);
+            CHECK(entry->timeout_kind == SIM_TIMEOUT_CONTINUOUS && entry->timeout_limit_ms == 40u);
+            CHECK(entry->timeout_origin_ms == received && entry->timeout_wait_ms == 40u);
+            CHECK(entry->has_error_rx && entry->error_rx_ms == received && entry->error_message == GBT27930_CRO);
+            CHECK(entry->has_last_rx && entry->last_rx_ms == received && entry->last_rx_message == GBT27930_CRO);
+        }
+    }
+    CHECK(found);
+    fixture_dispose();
+    return 0;
+}
 int main(void)
 {
-    if (test_bsd_until_crm() != 0 || test_bcp_update() != 0 || test_charger_bcp_update() != 0 || test_failed_statistics_until_crm() != 0 || test_cem_until_crm() != 0)
+    if (test_timeout_evidence() != 0 || test_bsd_until_crm() != 0 || test_bcp_update() != 0 || test_charger_bcp_update() != 0 || test_failed_statistics_until_crm() != 0 || test_cem_until_crm() != 0)
     {
         fixture_dispose();
         return 1;

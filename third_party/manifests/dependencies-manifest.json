@@ -7659,12 +7659,12 @@
         {
           "path": "sim_ui_font_16.c",
           "upstream_path": "derived UI subset (see README.md)",
-          "sha256_lf": "cb86d26e1bb1387939877707317fe14dbc0b63762c99cc164972258ff01f2087"
+          "sha256_lf": "5ad4214f54136d9f6d2836a6fa47e4eb86577c42b1c995af96c5935324163cc5"
         },
         {
           "path": "ui_chars.txt",
           "upstream_path": "derived UI subset (see README.md)",
-          "sha256_lf": "fba93ae140ca3639b4062654eefdbef511346e9390e24ca52bfa8dd346143ce4"
+          "sha256_lf": "9d54b4d866b9b60cc8b48840a0d759b2cd9853ecda8a1d42e04ff41a70bb80b5"
         }
       ]
     }

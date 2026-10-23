@@ -42,6 +42,56 @@ static int sim_engine_dispatch(void *user, bool receive, const char *message, ui
 static void sim_engine_deliver(sim_engine_t *engine, gbt27930_message_t message, const uint8_t *data, size_t len);
 static bool sim_engine_active(const sim_engine_t *engine, gbt27930_message_t message);
 
+/** Each retained record belongs to one stage entry, including repeated attempts. */
+static sim_transition_t *sim_engine_record(sim_engine_t *engine)
+{
+    return &engine->observation.history[(engine->observation.history_count - 1u) % SIM_STAGE_HISTORY];
+}
+static void sim_engine_record_close(sim_engine_t *engine, const char *reason)
+{
+    sim_transition_t *record = sim_engine_record(engine);
+    if (!record->closed)
+    {
+        record->closed = true;
+        record->exited_ms = engine->now_ms;
+        (void) snprintf(record->exit_reason, sizeof(record->exit_reason), "%s", reason);
+    }
+}
+static void sim_engine_record_failure(sim_engine_t *engine, const char *reason, gbt27930_message_t message)
+{
+    sim_transition_t *record = sim_engine_record(engine);
+    if (!record->failed)
+    {
+        record->failed = true;
+        record->failed_ms = engine->now_ms;
+        record->error_message = message;
+        (void) snprintf(record->error, sizeof(record->error), "%s", reason);
+        if ((unsigned) message < GBT27930_MESSAGE_COUNT)
+        {
+            record->has_error_rx = engine->has_received[message];
+            record->error_rx_ms = engine->received_ms[message];
+        }
+    }
+}
+static void sim_engine_fault_evidence(void *user, const sim_fault_evidence_t *evidence)
+{
+    sim_engine_t *engine = user;
+    sim_transition_t *record = sim_engine_record(engine);
+    uint32_t *hits = evidence->manual ? &record->manual_hits : &record->config_hits;
+    if (*hits < UINT32_MAX)
+    {
+        (*hits)++;
+    }
+    record->last_fault = *evidence;
+}
+static void sim_engine_record_timeout(sim_engine_t *engine, sim_timeout_kind_t kind, uint32_t origin, uint32_t limit)
+{
+    sim_transition_t *record = sim_engine_record(engine);
+    record->timeout_kind = kind;
+    record->timeout_origin_ms = origin;
+    record->timeout_limit_ms = limit;
+    record->timeout_wait_ms = engine->now_ms - origin;
+}
 /** State changes preserve continuing message schedules; physical actions are logs only. */
 static void sim_engine_stage(sim_engine_t *engine, sim_stage_t stage, const char *reason)
 {
@@ -50,13 +100,14 @@ static void sim_engine_stage(sim_engine_t *engine, sim_stage_t stage, const char
         engine->completed_stats = engine->stage == SIM_STAGE_STATISTICS;
     }
     sim_log_event("STATE", "from=%s to=%s reason=%s", s_sim_stage_names[engine->stage], s_sim_stage_names[stage], reason);
+    sim_engine_record_close(engine, reason);
     sim_status_t *obs = &engine->observation;
     if (obs->history_count < UINT32_MAX)
     {
         obs->history_count++;
     }
     sim_transition_t *transition = &obs->history[(obs->history_count - 1u) % SIM_STAGE_HISTORY];
-    *transition = (sim_transition_t){.stage = stage, .entered_ms = engine->now_ms};
+    *transition = (sim_transition_t){.stage = stage, .entered_ms = engine->now_ms, .error_message = GBT27930_MESSAGE_COUNT};
     (void) snprintf(transition->reason, sizeof(transition->reason), "%s", reason);
     engine->stage = stage;
     engine->stage_start_ms = engine->now_ms;
@@ -143,6 +194,7 @@ static void sim_engine_failure(sim_engine_t *engine, const char *reason, gbt2793
     {
         return;
     }
+    sim_engine_record_failure(engine, reason, message);
     engine->observation.error_stage = engine->stage;
     engine->observation.error_message = message;
     (void) snprintf(engine->observation.error, sizeof(engine->observation.error), "%s", reason);
@@ -354,7 +406,8 @@ sim_engine_t *sim_engine_create(const sim_config_t *config, sim_engine_send_cb_t
     engine->send_cb = send_cb;
     engine->cb_user = cb_user;
     engine->observation.history_count = 1u;
-    engine->observation.history[0] = (sim_transition_t){.stage = SIM_STAGE_HANDSHAKE};
+    engine->observation.history[0] = (sim_transition_t){.stage = SIM_STAGE_HANDSHAKE, .error_message = GBT27930_MESSAGE_COUNT};
+    (void) snprintf(engine->observation.history[0].reason, sizeof(engine->observation.history[0].reason), "session_start");
     engine->observation.error_message = GBT27930_MESSAGE_COUNT;
     engine->auxiliary_power_on = true;
     j1939_tp_options_t options = {.source = config->source, .peer = config->peer, .dt_interval_ms = config->dt_interval_ms, .rx_window = config->tp_rx_window, .t1_ms = config->tp_t1_ms, .t2_ms = config->tp_t2_ms, .t3_ms = config->tp_t3_ms, .t4_ms = config->tp_t4_ms, .send_cb = sim_engine_tp_send, .recv_cb = sim_engine_tp_receive, .event_cb = sim_engine_tp_event, .cb_user = engine};
@@ -365,6 +418,7 @@ sim_engine_t *sim_engine_create(const sim_config_t *config, sim_engine_send_cb_t
         sim_engine_destroy(engine);
         return NULL;
     }
+    sim_fault_observe(engine->fault, sim_engine_fault_evidence, engine);
     sim_log_event("ACTION", "Simulated plug-in, lock and auxiliary power on; measurements from configuration");
     return engine;
 }
@@ -637,6 +691,10 @@ static void sim_engine_deliver(sim_engine_t *engine, gbt27930_message_t message,
             engine->observation.peer.available[idx] = decoded.available[idx];
         }
     }
+    sim_transition_t *record = sim_engine_record(engine);
+    record->has_last_rx = true;
+    record->last_rx_ms = engine->now_ms;
+    record->last_rx_message = message;
     engine->received_ms[message] = engine->now_ms;
     engine->has_received[message] = true;
     sim_log_event("MESSAGE", "direction=rx name=%s len=%u", desc->name, (unsigned) len);
@@ -759,6 +817,7 @@ static bool sim_engine_expired(sim_engine_t *engine, gbt27930_message_t message,
     uint32_t timeout_ms = engine->has_received[message] ? engine->config.timeout_ms[message] : engine->config.first_timeout_ms[message];
     if (engine->now_ms - origin >= timeout_ms)
     {
+        sim_engine_record_timeout(engine, engine->has_received[message] ? SIM_TIMEOUT_CONTINUOUS : SIM_TIMEOUT_FIRST, origin, timeout_ms);
         sim_engine_failure(engine, "message_timeout", message);
         return true;
     }
@@ -785,6 +844,7 @@ static void sim_engine_timeouts(sim_engine_t *engine)
             {
                 if (engine->now_ms - start >= engine->config.first_timeout_ms[GBT27930_CRM])
                 {
+                    sim_engine_record_timeout(engine, SIM_TIMEOUT_STAGE, start, engine->config.first_timeout_ms[GBT27930_CRM]);
                     sim_engine_failure(engine, "message_timeout", GBT27930_CRM);
                 }
             }
@@ -800,6 +860,7 @@ static void sim_engine_timeouts(sim_engine_t *engine)
             uint32_t ready_origin = charger ? engine->parameter_start_ms : (engine->own_ready_sent ? engine->own_ready_ms : start);
             if (engine->now_ms - ready_origin >= engine->config.ready_timeout_ms)
             {
+                sim_engine_record_timeout(engine, SIM_TIMEOUT_STAGE, ready_origin, engine->config.ready_timeout_ms);
                 sim_engine_failure(engine, "ready_timeout", charger ? GBT27930_BRO : GBT27930_CRO);
                 break;
             }
@@ -995,6 +1056,8 @@ int sim_engine_tick(sim_engine_t *engine, uint32_t now_ms)
     }
     if (now_ms >= engine->config.max_session_ms)
     {
+        sim_engine_record_timeout(engine, SIM_TIMEOUT_SESSION, 0u, engine->config.max_session_ms);
+        sim_engine_record_failure(engine, "session_timeout", GBT27930_MESSAGE_COUNT);
         engine->observation.error_stage = engine->stage;
         engine->observation.error_message = GBT27930_MESSAGE_COUNT;
         (void) snprintf(engine->observation.error, sizeof(engine->observation.error), "session_timeout");
@@ -1154,4 +1217,18 @@ void sim_engine_status(const sim_engine_t *engine, sim_status_t *status)
         default:
             break;
     }
+}
+
+void sim_engine_finish(sim_engine_t *engine, int result, uint32_t now_ms)
+{
+    engine->now_ms = now_ms;
+    if (result < 0 && !engine->failed)
+    {
+        sim_engine_record_failure(engine, "runtime_error", GBT27930_MESSAGE_COUNT);
+        engine->observation.error_stage = engine->stage;
+        engine->observation.error_message = GBT27930_MESSAGE_COUNT;
+        (void) snprintf(engine->observation.error, sizeof(engine->observation.error), "runtime_error");
+        engine->failed = true;
+    }
+    sim_engine_record_close(engine, result < 0 ? "session_failed" : "session_complete");
 }
