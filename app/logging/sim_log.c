@@ -37,9 +37,9 @@ static void sim_log_drain(void *cb_user)
         log_sink_write(buffer, len);
     }
 }
-int sim_log_open(bool file, const char *path)
+int sim_log_open(bool file, const char *path, const char *role)
 {
-    int rc = log_sink_open(file, path);
+    int rc = log_sink_open(file, path, role);
     if (rc != 0)
     {
         return rc;

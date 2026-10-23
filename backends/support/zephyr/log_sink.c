@@ -31,9 +31,10 @@ const char *log_sink_path(void)
 {
     return "";
 }
-int log_sink_open(bool file_enabled, const char *path)
+int log_sink_open(bool file_enabled, const char *path, const char *role)
 {
     (void) path;
+    (void) role;
     return file_enabled ? -ENOSYS : 0;
 }
 void log_sink_write(const char *data, size_t len)

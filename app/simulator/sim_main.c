@@ -43,7 +43,7 @@ static int sim_main_run(const args_t *args)
         console_printf("speed requires software_test=true and 1..100\n");
         return 1;
     }
-    if (sim_log_open(config.file_log, config.log_path) != 0)
+    if (sim_log_open(config.file_log, config.log_path, config.charger ? "charger" : "bms") != 0)
     {
         console_printf("log initialization failed\n");
         return 1;
@@ -67,7 +67,7 @@ static int sim_main_run(const args_t *args)
             (void) snprintf(capture_path, sizeof(capture_path), "%s.candump.log", log_sink_path());
             path = capture_path;
         }
-        rc = can_capture_start(config.can_interface, path);
+        rc = can_capture_start(config.can_interface, path, config.charger ? "charger" : "bms");
         if (rc != 0)
         {
             sim_log_event("ERROR", "candump startup failed rc=%d path=%s", rc, can_capture_path());

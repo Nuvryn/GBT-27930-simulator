@@ -90,7 +90,7 @@ static int test_log_slow_output(void)
         return 1;
     }
     (void) close(pipes[1]);
-    if (sim_log_open(false, NULL) != 0)
+    if (sim_log_open(false, NULL, "bms") != 0)
     {
         return 1;
     }
@@ -113,7 +113,7 @@ static int test_log_slow_output(void)
 }
 int main(void)
 {
-    if (test_log_shanghai_time() != 0 || test_log_slow_output() != 0 || sim_log_open(true, "async_log_test.log") != 0)
+    if (test_log_shanghai_time() != 0 || test_log_slow_output() != 0 || sim_log_open(true, "async_log_test.log", "bms") != 0)
     {
         return 1;
     }
@@ -130,7 +130,7 @@ int main(void)
     {
         return 1;
     }
-    if (sim_log_open(true, "async_log_test.log") != 0)
+    if (sim_log_open(true, "async_log_test.log", "bms") != 0)
     {
         return 1;
     }
@@ -162,7 +162,7 @@ int main(void)
     struct rlimit limited = saved_limit;
     limited.rlim_cur = 1u;
     void (*saved_handler)(int) = signal(SIGXFSZ, SIG_IGN);
-    if (saved_handler == SIG_ERR || sim_log_open(true, "async_log_failure.log") != 0 || setrlimit(RLIMIT_FSIZE, &limited) != 0)
+    if (saved_handler == SIG_ERR || sim_log_open(true, "async_log_failure.log", "bms") != 0 || setrlimit(RLIMIT_FSIZE, &limited) != 0)
     {
         return 1;
     }

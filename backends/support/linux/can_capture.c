@@ -204,7 +204,7 @@ static int can_capture_open_file(unsigned stream, const char *path)
     }
     return 0;
 }
-static int can_capture_choose_path(const char *path)
+static int can_capture_choose_path(const char *path, const char *role)
 {
     if (path != NULL && path[0] != '\0')
     {
@@ -214,6 +214,10 @@ static int can_capture_choose_path(const char *path)
         }
         (void) snprintf(s_can_capture_path, sizeof(s_can_capture_path), "%s", path);
         return 0;
+    }
+    if (role == NULL || (strcmp(role, "bms") != 0 && strcmp(role, "charger") != 0))
+    {
+        return -EINVAL;
     }
     if (mkdir("logs", 0755) != 0 && errno != EEXIST)
     {
@@ -230,10 +234,10 @@ static int can_capture_choose_path(const char *path)
     {
         return rc;
     }
-    (void) snprintf(s_can_capture_path, sizeof(s_can_capture_path), "logs/%s_%09ld_%ld.candump.log", stamp, now.tv_nsec, (long) getpid());
+    (void) snprintf(s_can_capture_path, sizeof(s_can_capture_path), "logs/%s_%s.candump.log", stamp, role);
     return 0;
 }
-int can_capture_start(const char *interface_name, const char *path)
+int can_capture_start(const char *interface_name, const char *path, const char *role)
 {
     if (s_can_capture_started)
     {
@@ -249,7 +253,7 @@ int can_capture_start(const char *interface_name, const char *path)
     {
         return -EINVAL;
     }
-    int rc = can_capture_choose_path(path);
+    int rc = can_capture_choose_path(path, role);
     if (rc != 0)
     {
         return rc;

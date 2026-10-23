@@ -9,7 +9,7 @@
 
 日志由协议线程格式化并写入 EasyLogger 的 64 KiB 异步环形缓冲区，平台独立线程负责控制台和文件 I/O。EasyLogger 自有配置位于 `app/logging/`；
 文件所有权及实际 I/O 位于 `backends/support/<平台>/log_sink.c`。
-默认开启文件保存，未指定路径时按上海时间（UTC+8）生成 logs/YYYYMMDD_HHMMSS_纳秒_PID.log，独占创建避免覆盖。显式 log_path 继续支持指定路径。
+默认开启文件保存，未指定路径时按上海时间（UTC+8）生成 logs/YYYYMMDD_HHMMSS_role.log，独占创建避免覆盖。显式 log_path 继续支持指定路径。
 文件开启失败、异步缓冲满、写入失败和关闭失败均导致非零退出；退出前排空缓冲并等待工作线程结束，关闭文件输出时不创建文件。
 
 ## 报文接口

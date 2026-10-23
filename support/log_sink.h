@@ -6,8 +6,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 typedef void (*log_sink_drain_cb_t)(void *cb_user);
-/** Empty/NULL path selects logs/<Shanghai timestamp>_<pid>.log. Explicit paths override. */
-int log_sink_open(bool file_enabled, const char *path);
+/** Empty/NULL path selects logs/<Shanghai timestamp>_<role>.log.
+ * Automatic naming requires role "bms" or "charger". Explicit paths override.
+ */
+int log_sink_open(bool file_enabled, const char *path, const char *role);
 /** Start one worker; callback drains upstream records. NULL callback rejected. */
 int log_sink_start(log_sink_drain_cb_t drain_cb, void *cb_user);
 /** Notify worker without waiting for I/O. */

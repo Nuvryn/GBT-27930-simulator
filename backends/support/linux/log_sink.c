@@ -116,8 +116,12 @@ int log_sink_stop(void)
     }
     return log_sink_error();
 }
-static int log_sink_open_generated(void)
+static int log_sink_open_generated(const char *role)
 {
+    if (role == NULL || (strcmp(role, "bms") != 0 && strcmp(role, "charger") != 0))
+    {
+        return -EINVAL;
+    }
     if (mkdir("logs", 0755) != 0 && errno != EEXIST)
     {
         return -errno;
@@ -133,7 +137,7 @@ static int log_sink_open_generated(void)
     {
         return rc;
     }
-    (void) snprintf(s_log_sink_path, sizeof(s_log_sink_path), "logs/%s_%09ld_%ld.log", stamp, now.tv_nsec, (long) getpid());
+    (void) snprintf(s_log_sink_path, sizeof(s_log_sink_path), "logs/%s_%s.log", stamp, role);
     int fd = open(s_log_sink_path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0644);
     if (fd < 0)
     {
@@ -148,7 +152,7 @@ static int log_sink_open_generated(void)
     }
     return 0;
 }
-int log_sink_open(bool file_enabled, const char *path)
+int log_sink_open(bool file_enabled, const char *path, const char *role)
 {
     if (s_log_sink_file != NULL || s_log_sink_started)
     {
@@ -162,7 +166,7 @@ int log_sink_open(bool file_enabled, const char *path)
     }
     if (path == NULL || path[0] == '\0')
     {
-        return log_sink_open_generated();
+        return log_sink_open_generated(role);
     }
     if (strlen(path) >= sizeof(s_log_sink_path))
     {

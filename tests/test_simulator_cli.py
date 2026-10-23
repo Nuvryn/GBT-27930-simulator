@@ -4,12 +4,12 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 
 
 def main():
     binary = Path(sys.argv[1]).resolve()
-    directory = binary.parent / "cli_checks"
-    directory.mkdir(exist_ok=True)
+    directory = Path(tempfile.mkdtemp(prefix="cli_checks_", dir=binary.parent))
     base = {"role": "bms", "version": 2015, "can_interface": "sim_missing0", "file_log": False}
     cases = [({}, "role/version"), ({**base, "role": "invalid"}, "role/version"),
              ({**base, "parameters": {"bcl_current_ma": 400001}}, "parameters"),
@@ -23,9 +23,9 @@ def main():
     if Path("/dev/full").exists():
         cases.append(({**base, "file_log": True, "log_path": "/dev/full"}, "log initialization failed"))
     auto_path = directory / "auto.json"
-    auto_path.write_text(json.dumps({"role": "bms", "version": 2015, "can_interface": "sim_missing0"}), encoding="utf-8")
     existing = set((directory / "logs").glob("*.log"))
-    for _ in range(2):
+    for role in ("bms", "charger"):
+        auto_path.write_text(json.dumps({"role": role, "version": 2015, "can_interface": "sim_missing0"}), encoding="utf-8")
         result = subprocess.run([str(binary), "--config", str(auto_path)], cwd=directory, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, text=True, timeout=3)
         if result.returncode != 1 or "LOGFILE" not in result.stdout:
@@ -33,7 +33,7 @@ def main():
             return 1
     generated = set((directory / "logs").glob("*.log")) - existing
     import re
-    if len(generated) != 2 or any(not re.fullmatch(r"\d{8}_\d{6}_\d{9}_\d+\.log", path.name) or
+    if len(generated) != 2 or {path.stem.split("_")[-1] for path in generated} != {"bms", "charger"} or any(not re.fullmatch(r"\d{8}_\d{6}_(bms|charger)\.log", path.name) or
                                   "can_bus_open failed" not in path.read_text() for path in generated):
         print("FAIL: timestamp names, collision prevention or exit-time log drain")
         return 1

@@ -17,7 +17,7 @@
 | `can_interface` | `can0` | 接口名，最多 15 字节 |
 | `source` / `peer` | 桩 86/244；BMS 244/86 | 0..253，不能相同 |
 | `software_test` / `speed` | false / 1 | 加速仅用于双方受控软件回归，速度 1..100 |
-| `file_log` / `log_path` | true / 空 | 默认生成 logs/YYYYMMDD_HHMMSS_纳秒_PID.log，固定使用上海时间（UTC+8）；显式路径最多 255 字节并保留覆盖行为；false 关闭文件保存 |
+| `file_log` / `log_path` | true / 空 | 默认生成 logs/YYYYMMDD_HHMMSS_role.log，固定使用上海时间（UTC+8）；显式路径最多 255 字节并保留覆盖行为；false 关闭文件保存 |
 | `candump` / `candump_path` | false / 空 | 显式启用后启动外部 candump；空路径关联应用日志，文件日志关闭时自行按真实时间命名；显式路径最多 255 字节，已有文件拒绝覆盖 |
 | `self_test_pass` | true | 自检结果；false 进入故障处理 |
 | `parameters_match` | true | 场景给出的参数匹配条件，同时仍校验收到的电压与能力范围 |
@@ -132,7 +132,7 @@
 
 帧日志包含协议时间、方向、29 位 ID、DLC 和全部字节；MESSAGE、STATE、TP、ERROR、FAULT、EVENT、ACTION 记录其上下文。ACTION 全部是模拟，不访问硬件。CCS 等采集值来自配置、请求钳位后的模拟输出或事件，不反读 ADC。
 
-采用 EasyLogger 原生异步缓冲，由独立线程批量输出。64 KiB 缓冲预先分配，协议线程不等待磁盘/终端 I/O；缓冲满会拒绝整条日志并锁存 ENOSPC，最终退出非零。写入失败同样锁存。退出先停止生产、排空并 join 线程，再关闭文件；日志保证到达 stdio 刷新层，不等于断电持久化。自动生成的应用日志和独立 candump 文件名固定使用上海时间（UTC+8），不受 TZ、系统时区或时区数据库缺失影响，也不修改进程时区。系统为 UTC 或上海时区时均只转换一次；日期跨天、跨月、跨年自动处理。系统时钟仍需准确；显式指定的文件路径保持原样。
+采用 EasyLogger 原生异步缓冲，由独立线程批量输出。64 KiB 缓冲预先分配，协议线程不等待磁盘/终端 I/O；缓冲满会拒绝整条日志并锁存 ENOSPC，最终退出非零。写入失败同样锁存。退出先停止生产、排空并 join 线程，再关闭文件；日志保证到达 stdio 刷新层，不等于断电持久化。自动生成的应用日志和独立 candump 文件名固定使用上海时间（UTC+8），不受 TZ、系统时区或时区数据库缺失影响，也不修改进程时区。系统为 UTC 或上海时区时均只转换一次；日期跨天、跨月、跨年自动处理。文件名时间精确到秒，不包含纳秒；使用 bms/charger 角色名区分双方，不再包含 PID；同一角色在同一秒重复启动时拒绝覆盖已有文件并返回失败。系统时钟仍需准确；显式指定的文件路径保持原样。
 
 正常完成输出 `RESULT status=PASS` 并退出 0；任何一次协议故障会保留本次进程的失败结果，即使后来成功重连并完成统计。异步写入在最后排空时失败也会令进程退出非零，工作线程另输出带错误码的 FAIL 诊断。场景报告的 PASS 表示观察到了预期结果，因此有意丢包的场景可以在模拟器退出 1 时判为 PASS。
 
@@ -140,7 +140,7 @@
 
 Linux 使用 `posix_spawnp` 直接启动 `candump -L -d <接口>,0:0,#FFFFFFFF`，不通过 shell。捕获同一接口上的全部数据帧及错误帧，不限于当前角色。底层抓到的是实际总线数据，包括错误注入后的帧；软件丢弃而未发送的报文不会出现在总线上。外部工具来源为 [linux-can/can-utils](https://github.com/linux-can/can-utils)，部署时需将匹配目标架构的 `candump` 放入 PATH。WSL 验证使用发行版 can-utils 2020.11.0-1。
 
-默认文件名为 `<应用日志路径>.candump.log`，例如 `logs/20261020_183000_123456789_4321.log.candump.log`；如果 `file_log=false`，抓包仍可独立开启，生成 `logs/YYYYMMDD_HHMMSS_纳秒_PID.candump.log`。诊断另存 `<抓包路径>.stderr.log`。二者均独占创建，避免覆盖旧证据；应用日志中 CAPTURE 条目记录实际路径。
+默认文件名为 `<应用日志路径>.candump.log`，例如 `logs/20261020_183000_bms.log.candump.log`；如果 `file_log=false`，抓包仍可独立开启，生成 `logs/YYYYMMDD_HHMMSS_role.candump.log`。诊断另存 `<抓包路径>.stderr.log`。二者均独占创建，避免覆盖旧证据；应用日志中 CAPTURE 条目记录实际路径。
 
 抓包由外部进程接收，平台工作线程保存 stdout/stderr，不在协议线程中写抓包文件。原始格式包含真实 Unix 时间戳、接口、CAN ID、数据，不随 speed 改变时间戳；加速回归的真实帧间隔会相应缩短。
 
