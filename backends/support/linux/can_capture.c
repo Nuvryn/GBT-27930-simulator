@@ -1,6 +1,7 @@
 /** @file can_capture.c @brief Spawn candump without a shell; supervise and persist its streams. */
 #define _GNU_SOURCE
 #include "support/can_capture.h"
+#include "backends/support/linux/log_filename_time.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <net/if.h>
@@ -219,12 +220,15 @@ static int can_capture_choose_path(const char *path)
         return -errno;
     }
     struct timespec now;
-    struct tm local_time;
     char stamp[32];
-    if (clock_gettime(CLOCK_REALTIME, &now) != 0 || localtime_r(&now.tv_sec, &local_time) == NULL ||
-        strftime(stamp, sizeof(stamp), "%Y%m%d_%H%M%S", &local_time) == 0u)
+    if (clock_gettime(CLOCK_REALTIME, &now) != 0)
     {
         return -EIO;
+    }
+    int rc = log_filename_time_format(now.tv_sec, stamp, sizeof(stamp));
+    if (rc != 0)
+    {
+        return rc;
     }
     (void) snprintf(s_can_capture_path, sizeof(s_can_capture_path), "logs/%s_%09ld_%ld.candump.log", stamp, now.tv_nsec, (long) getpid());
     return 0;

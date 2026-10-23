@@ -1,6 +1,7 @@
-/** @file log_sink.c @brief POSIX worker, local-time file names and persistent I/O failures. */
+/** @file log_sink.c @brief POSIX worker, Shanghai-time file names and persistent I/O failures. */
 #define _POSIX_C_SOURCE 200809L
 #include "support/log_sink.h"
+#include "backends/support/linux/log_filename_time.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -122,12 +123,15 @@ static int log_sink_open_generated(void)
         return -errno;
     }
     struct timespec now;
-    struct tm local_time;
     char stamp[32];
-    if (clock_gettime(CLOCK_REALTIME, &now) != 0 || localtime_r(&now.tv_sec, &local_time) == NULL ||
-        strftime(stamp, sizeof(stamp), "%Y%m%d_%H%M%S", &local_time) == 0u)
+    if (clock_gettime(CLOCK_REALTIME, &now) != 0)
     {
         return -EIO;
+    }
+    int rc = log_filename_time_format(now.tv_sec, stamp, sizeof(stamp));
+    if (rc != 0)
+    {
+        return rc;
     }
     (void) snprintf(s_log_sink_path, sizeof(s_log_sink_path), "logs/%s_%09ld_%ld.log", stamp, now.tv_nsec, (long) getpid());
     int fd = open(s_log_sink_path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0644);
