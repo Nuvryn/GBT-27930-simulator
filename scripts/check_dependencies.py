@@ -24,7 +24,7 @@ def main():
         print(error)
     if errors:
         return 1
-    print("PASS: cJSON and EasyLogger snapshots")
+    print("PASS: " + ", ".join(component["name"] for component in manifest["components"]) + " snapshots")
     return subprocess.run([sys.executable, str(root / "scripts/check_open_sae_j1939.py")], check=False).returncode
 
 

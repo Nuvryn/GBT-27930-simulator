@@ -4,6 +4,7 @@
 
 | 组件 | 来源 | 固定提交 | 许可证 | 用途 |
 |---|---|---|---|---|
+| LVGL | https://github.com/lvgl/lvgl | `80ca777e37a2b176770726a02e07a6fb79ef0b39`（v9.6.0） | MIT 及上游附带版权说明，`third_party/lvgl/LICENCE.txt`、`COPYRIGHTS.md` | 可选本机触屏 UI，C-only 软件渲染 |
 | cJSON | https://github.com/DaveGamble/cJSON | `6d9f2443ab071f86e5d9b43025a40929ec41c46c` | MIT，`third_party/cjson/LICENSE` | 配置解析 |
 | EasyLogger | https://github.com/armink/EasyLogger | `806328e131836662fa83dd43364a53f699fd76ac` | MIT，`third_party/easylogger/LICENSE` | 日志格式化、异步缓冲与线程输出 |
 | Open-SAE-J1939 | https://github.com/DanielMartensson/Open-SAE-J1939 | `2a890c58c6a199d6a6ef793b71bac3c53f594823` | MIT，`third_party/open_sae_j1939/LICENSE` | TP 报文生成与接收存储 |
@@ -26,3 +27,5 @@ Open-SAE-J1939 使用其单独的快照清单。升级时固定新提交、更�
 ## 外部运行工具
 
 用户指定的 `candump` 来自 [can-utils](https://github.com/linux-can/can-utils)。它以独立进程运行，不链接或复制源码到本工程，故不计入 vendored 文件哈希清单。Linux/ARM 系统启用抓包时需自行提供对应架构的工具；默认按 PATH 查找。WSL 验证包版本为 Ubuntu 的 2020.11.0-1。升级工具或目标镜像后需重跑抓包检查；构建不自动下载和安装该工具。
+
+LVGL 导入 src、include、libs 及根公共头文件、许可证和配置模板，均保持上游内容不变。项目自己的 lv_conf.h 和平台适配位于自有目录；CMake 禁用外部绘制引擎，不启用或下载额外依赖。固定文件的 LF 归一化校验登记在统一依赖清单，SIM_UI=OFF 不构建 LVGL。
